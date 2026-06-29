@@ -1,0 +1,34 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+*.egg-info/
+
+# Data files (large synthetic CSVs)
+data/raw/*.csv
+data/raw/*.parquet
+
+# Secrets / credentials
+*.env
+.env*
+snowflake_credentials.json
+profiles.yml
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# dbt
+dbt/afrimoney/target/
+dbt/afrimoney/logs/
+dbt/afrimoney/dbt_packages/
+
+# Notebooks checkpoints
+.ipynb_checkpoints/
+
+# Large binaries (keep Excel in repo, exclude temp files)
+~$*.xlsx
+~$*.docx

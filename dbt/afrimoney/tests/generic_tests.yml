@@ -1,0 +1,120 @@
+version: 2
+
+models:
+  - name: stg_transfers
+    description: "Staged transfers from Bronze — one row per transfer order"
+    columns:
+      - name: transfer_id
+        description: "Unique transfer identifier"
+        tests:
+          - not_null
+          - unique
+      - name: business_key
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['MKR', 'MMY']
+      - name: transfer_status
+        tests:
+          - accepted_values:
+              values: ['COMPLETED','FAILED','CANCELLED','REFUNDED','AWAITING_PAYMENT',
+                       'CREATED','QUOTED','PAID','COMPLIANCE_REVIEW','PROCESSING',
+                       'SENT_TO_PARTNER','AVAILABLE_FOR_COLLECTION']
+      - name: send_amount_zar
+        tests:
+          - not_null
+          - dbt_utils.expression_is_true:
+              expression: "> 0"
+      - name: created_at
+        tests:
+          - not_null
+      - name: sender_customer_id
+        tests:
+          - not_null
+          - relationships:
+              to: source('bronze', 'dim_customer')
+              field: customer_id
+
+  - name: stg_customers
+    description: "Staged customer dimension (current records only in marts)"
+    columns:
+      - name: customer_id
+        tests:
+          - not_null
+      - name: business_key
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['MKR', 'MMY']
+      - name: kyc_level
+        tests:
+          - accepted_values:
+              values: ['LEVEL_0','LEVEL_1','LEVEL_2','LEVEL_3']
+      - name: risk_band
+        tests:
+          - accepted_values:
+              values: ['LOW','MEDIUM','HIGH','VERY_HIGH']
+      - name: customer_status
+        tests:
+          - accepted_values:
+              values: ['ACTIVE','SUSPENDED','CLOSED','DORMANT']
+
+  - name: mart_remittance
+    description: "Gold: monthly corridor remittance KPIs"
+    columns:
+      - name: business_key
+        tests:
+          - not_null
+      - name: success_rate_pct
+        tests:
+          - dbt_utils.expression_is_true:
+              expression: "between 0 and 100"
+      - name: total_net_revenue_zar
+        tests:
+          - not_null
+
+  - name: mart_customer_360
+    description: "Gold: one row per current customer with LTV and engagement"
+    columns:
+      - name: customer_id
+        tests:
+          - not_null
+          - unique
+      - name: ltv_score
+        tests:
+          - not_null
+          - dbt_utils.expression_is_true:
+              expression: ">= 0"
+      - name: engagement_score
+        tests:
+          - dbt_utils.expression_is_true:
+              expression: "between 0 and 100"
+
+sources:
+  - name: bronze
+    database: AFRIMONEY_DB
+    schema: BRONZE
+    tables:
+      - name: fact_remittance_transfer
+        description: "Raw transfer orders"
+        freshness:
+          warn_after: {count: 25, period: hour}
+          error_after: {count: 48, period: hour}
+        loaded_at_field: _LOADED_AT
+      - name: dim_customer
+        description: "Customer SCD2"
+      - name: dim_recipient
+      - name: fact_fx_rate
+        freshness:
+          warn_after: {count: 7, period: hour}
+          error_after: {count: 13, period: hour}
+        loaded_at_field: _LOADED_AT
+      - name: fact_wallet_ledger
+      - name: fact_card_transaction
+      - name: fact_loan_application
+      - name: fact_loan_repayment
+      - name: fact_insurance_policy
+      - name: fact_insurance_claim
+      - name: fact_usd_savings
+      - name: fact_payment
+      - name: fact_payout

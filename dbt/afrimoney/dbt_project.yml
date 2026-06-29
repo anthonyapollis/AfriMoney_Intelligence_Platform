@@ -1,0 +1,37 @@
+name: 'afrimoney'
+version: '1.0.0'
+config-version: 2
+
+profile: 'afrimoney_snowflake'
+
+model-paths: ["models"]
+test-paths: ["tests"]
+macro-paths: ["macros"]
+seed-paths: ["seeds"]
+
+target-path: "target"
+clean-targets: ["target", "dbt_packages"]
+
+models:
+  afrimoney:
+    staging:
+      +schema: SILVER
+      +materialized: view
+      +tags: ["silver", "daily"]
+    intermediate:
+      +schema: SILVER
+      +materialized: table
+      +tags: ["silver", "daily"]
+      +snowflake_warehouse: AFRIMONEY_TRANSFORM_WH
+    marts:
+      +schema: GOLD
+      +materialized: table
+      +tags: ["gold", "daily"]
+      +snowflake_warehouse: AFRIMONEY_TRANSFORM_WH
+
+vars:
+  reporting_currency: 'ZAR'
+  start_date: '2021-01-01'
+  end_date: '2026-06-28'
+  fraud_threshold: 0.40
+  churn_lookback_days: 90

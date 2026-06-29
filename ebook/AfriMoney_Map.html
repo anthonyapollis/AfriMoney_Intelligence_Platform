@@ -1,0 +1,1032 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>AfriMoney — Remittance Corridor Intelligence Map</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --green:#00C97A;--gold:#F5A623;--coral:#FF6B6B;
+  --sky:#4ECDC4;--navy:#2C1A0E;--panel:#3D2510;
+  --mkr:#00C97A;--mmy:#F5A623;
+}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#2C1A0E;color:#F5ECD7;height:100vh;display:flex;flex-direction:column;overflow:hidden}
+
+/* ── HEADER ── */
+.header{
+  background:linear-gradient(90deg,#2C1A0E 0%,#4A2C10 50%,#2C1A0E 100%);
+  border-bottom:2px solid var(--gold);
+  padding:10px 20px;display:flex;align-items:center;gap:24px;flex-shrink:0;
+}
+.logo{font-size:22px;font-weight:900;letter-spacing:2px;color:var(--green)}
+.logo span{color:var(--gold)}
+.kpis{display:flex;gap:20px;margin-left:auto}
+.kpi{text-align:center}
+.kpi-v{font-size:18px;font-weight:900;color:var(--green)}
+.kpi-v.gold{color:var(--gold)}
+.kpi-v.coral{color:var(--coral)}
+.kpi-v.sky{color:var(--sky)}
+.kpi-l{font-size:9px;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,.55);margin-top:1px}
+
+/* ── NAV TABS ── */
+.nav{background:#3D2510;border-bottom:1px solid rgba(245,166,35,.2);
+     display:flex;gap:4px;padding:6px 20px;flex-shrink:0;align-items:center}
+.nav-tab{padding:6px 16px;border-radius:6px;font-size:12px;font-weight:600;
+         color:rgba(255,255,255,.5);cursor:pointer;transition:.2s;text-decoration:none;display:inline-block}
+.nav-tab.active{background:var(--gold);color:#2C1A0E}
+.nav-tab:hover:not(.active){background:rgba(245,166,35,.15);color:#F5ECD7}
+.nav-artifact{padding:6px 14px;border-radius:6px;font-size:12px;font-weight:700;
+              cursor:pointer;transition:.2s;text-decoration:none;display:flex;align-items:center;gap:6px;
+              border:1px solid;margin-left:4px}
+.nav-artifact.ebook{color:#A569BD;border-color:rgba(165,105,189,.4);background:rgba(165,105,189,.08)}
+.nav-artifact.ebook:hover{background:rgba(165,105,189,.2);color:#C39BD3}
+.nav-artifact.excel{color:#27AE60;border-color:rgba(39,174,96,.4);background:rgba(39,174,96,.08)}
+.nav-artifact.excel:hover{background:rgba(39,174,96,.2)}
+.nav-sep{width:1px;height:20px;background:rgba(255,255,255,.1);margin:0 8px}
+
+/* ── MAP AREA ── */
+.map-wrap{flex:1;display:flex;position:relative;overflow:hidden}
+#map{flex:1}
+
+/* ── LEFT PANEL ── */
+.left-panel{
+  width:260px;background:rgba(44,26,14,.97);border-right:1px solid rgba(245,166,35,.15);
+  display:flex;flex-direction:column;gap:0;overflow-y:auto;flex-shrink:0;backdrop-filter:blur(8px);
+}
+.panel-section{padding:14px 16px;border-bottom:1px solid rgba(245,166,35,.1)}
+.panel-title{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1.5px;
+              color:var(--green);margin-bottom:10px}
+
+/* ML INSIGHTS */
+.cluster-item{display:flex;align-items:flex-start;gap:8px;padding:6px 0;cursor:pointer;
+              border-radius:6px;transition:.15s}
+.cluster-item:hover{background:rgba(255,255,255,.05);padding-left:4px}
+.dot{width:12px;height:12px;border-radius:50%;flex-shrink:0;margin-top:3px}
+.cluster-name{font-size:12px;font-weight:700;color:#fff}
+.cluster-desc{font-size:10px;color:rgba(255,255,255,.5);margin-top:1px}
+.cluster-count{margin-left:auto;font-size:11px;font-weight:700;color:var(--gold);flex-shrink:0}
+
+/* CORR TABLE */
+.corr-row{display:flex;justify-content:space-between;align-items:center;padding:5px 0;
+           border-bottom:1px solid rgba(255,255,255,.05);font-size:11px}
+.corr-bar-wrap{width:70px;height:5px;background:rgba(255,255,255,.1);border-radius:3px;margin:0 8px}
+.corr-bar{height:5px;border-radius:3px}
+
+/* SEASONAL */
+.season-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:8px}
+.season-card{background:rgba(255,255,255,.06);border-radius:8px;padding:8px 4px;text-align:center}
+.season-icon{font-size:18px}
+.season-pct{font-size:13px;font-weight:800;color:var(--gold);margin-top:2px}
+.season-lbl{font-size:9px;color:rgba(255,255,255,.5);margin-top:1px}
+
+/* ── RIGHT PANEL ── */
+.right-panel{
+  width:200px;background:rgba(44,26,14,.97);border-left:1px solid rgba(245,166,35,.15);
+  padding:14px;flex-shrink:0;backdrop-filter:blur(8px);
+}
+.ctrl-title{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1.5px;
+             color:var(--sky);margin-bottom:10px}
+.ctrl-group{margin-bottom:18px}
+.ctrl-label{font-size:10px;color:rgba(255,255,255,.5);margin-bottom:6px;font-weight:600}
+.radio-item{display:flex;align-items:center;gap:8px;padding:5px 0;cursor:pointer;font-size:12px}
+.radio-item input{accent-color:var(--green)}
+.legend-item{display:flex;align-items:center;gap:8px;padding:3px 0;font-size:11px}
+.legend-dot{width:12px;height:12px;border-radius:50%;flex-shrink:0}
+.legend-sq{width:12px;height:12px;border-radius:2px;flex-shrink:0}
+
+/* ── TOOLTIP ── */
+.leaflet-popup-content-wrapper{
+  background:rgba(13,33,55,.97)!important;border:1px solid var(--green)!important;
+  border-radius:12px!important;color:#fff!important;box-shadow:0 8px 32px rgba(0,200,120,.2)!important;
+}
+.leaflet-popup-tip{background:var(--green)!important}
+.popup-title{font-size:14px;font-weight:900;color:var(--green);margin-bottom:8px}
+.popup-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px}
+.popup-kpi{background:rgba(255,255,255,.06);border-radius:6px;padding:6px 8px;text-align:center}
+.popup-kpi-v{font-size:14px;font-weight:900}
+.popup-kpi-l{font-size:9px;color:rgba(255,255,255,.5);margin-top:2px}
+.badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;margin-left:6px}
+
+/* Leaflet dark override */
+.leaflet-container{background:#0D2137!important}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="logo">Afri<span>Money</span> 🌍</div>
+  <div style="font-size:11px;color:rgba(255,255,255,.4);margin-left:4px">Remittance Corridor Intelligence Map</div>
+  <div class="kpis">
+    <div class="kpi"><div class="kpi-v">17</div><div class="kpi-l">Active Corridors</div></div>
+    <div class="kpi"><div class="kpi-v gold">5M+</div><div class="kpi-l">Transfer Orders</div></div>
+    <div class="kpi"><div class="kpi-v sky">R 78B</div><div class="kpi-l">Annual Volume</div></div>
+    <div class="kpi"><div class="kpi-v coral">3.2 bps</div><div class="kpi-l">Fraud Rate</div></div>
+    <div class="kpi"><div class="kpi-v" style="color:#A569BD">500K</div><div class="kpi-l">Customers</div></div>
+  </div>
+</div>
+
+<!-- NAV -->
+<div class="nav">
+  <div class="nav-tab active" onclick="showTab('map',this)">🗺️ Map</div>
+  <div class="nav-tab" onclick="showTab('dashboard',this)">📊 Dashboard</div>
+  <div class="nav-tab" onclick="showTab('corridors',this)">🌍 Corridors</div>
+  <div class="nav-tab" onclick="showTab('ml',this)">🤖 ML Features</div>
+  <div class="nav-tab" onclick="showTab('risk',this)">⚠️ Risk</div>
+  <div class="nav-tab" onclick="showTab('fx',this)">💱 FX Rates</div>
+  <div class="nav-tab" onclick="showTab('insights',this)">💡 Insights</div>
+  <div class="nav-sep"></div>
+  <a class="nav-artifact ebook" href="AfriMoney_Intelligence_Platform_Ebook.html" target="_blank">📖 Technical Ebook</a>
+  <a class="nav-artifact excel" href="#" onclick="alert('Excel dashboard: AfriMoney_Dashboard.xlsx\nLocation: Documents/Fintech_Intelligence_Platform/excel/\n\nOpen the file directly from that folder.')">📊 Excel Dashboard</a>
+  <a class="nav-artifact" style="color:var(--sky);border-color:rgba(78,205,196,.4);background:rgba(78,205,196,.08)" href="#" onclick="showDataModel()">🗂️ Data Model</a>
+</div>
+
+<!-- MAP AREA -->
+<div class="map-wrap" id="view-map">
+
+  <!-- LEFT PANEL -->
+  <div class="left-panel">
+
+    <div class="panel-section">
+      <div class="panel-title">ML Corridor Clusters</div>
+      <div class="cluster-item" onclick="filterCluster('high_volume')">
+        <div class="dot" style="background:#FF6B6B"></div>
+        <div><div class="cluster-name">High-Volume Core</div><div class="cluster-desc">Top revenue, high frequency</div></div>
+        <div class="cluster-count">4 corridors</div>
+      </div>
+      <div class="cluster-item" onclick="filterCluster('premium')">
+        <div class="dot" style="background:#F5A623"></div>
+        <div><div class="cluster-name">Premium Corridor</div><div class="cluster-desc">High FX margin, strong AUC</div></div>
+        <div class="cluster-count">5 corridors</div>
+      </div>
+      <div class="cluster-item" onclick="filterCluster('growth')">
+        <div class="dot" style="background:#4ECDC4"></div>
+        <div><div class="cluster-name">Growth Market</div><div class="cluster-desc">Rising volume, competitive price</div></div>
+        <div class="cluster-count">5 corridors</div>
+      </div>
+      <div class="cluster-item" onclick="filterCluster('emerging')">
+        <div class="dot" style="background:#00C97A"></div>
+        <div><div class="cluster-name">Emerging Route</div><div class="cluster-desc">Lower volume, growth potential</div></div>
+        <div class="cluster-count">3 corridors</div>
+      </div>
+      <div style="margin-top:8px">
+        <div class="corr-row" style="font-size:10px;color:rgba(255,255,255,.4);padding-bottom:4px">
+          <span>PRICE ↔ SUCCESS RATE CORRELATION</span>
+        </div>
+        <div class="corr-row">
+          <span>High-Volume Core</span>
+          <div class="corr-bar-wrap"><div class="corr-bar" style="width:55%;background:#FF6B6B"></div></div>
+          <span style="color:#FF6B6B">-0.42</span>
+        </div>
+        <div class="corr-row">
+          <span>Premium</span>
+          <div class="corr-bar-wrap"><div class="corr-bar" style="width:15%;background:#F5A623"></div></div>
+          <span style="color:#F5A623">+0.09</span>
+        </div>
+        <div class="corr-row">
+          <span>Growth</span>
+          <div class="corr-bar-wrap"><div class="corr-bar" style="width:35%;background:#4ECDC4"></div></div>
+          <span style="color:#4ECDC4">-0.24</span>
+        </div>
+        <div class="corr-row">
+          <span>Emerging</span>
+          <div class="corr-bar-wrap"><div class="corr-bar" style="width:70%;background:#00C97A"></div></div>
+          <span style="color:#00C97A">-0.64</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel-section">
+      <div class="panel-title">Seasonal Transfer Volume</div>
+      <div style="font-size:10px;color:rgba(255,255,255,.4);margin-bottom:6px">SA AVERAGE — ALL CORRIDORS</div>
+      <div class="season-grid">
+        <div class="season-card"><div class="season-icon">☀️</div><div class="season-pct">31%</div><div class="season-lbl">Summer</div></div>
+        <div class="season-card"><div class="season-icon">🍂</div><div class="season-pct">28%</div><div class="season-lbl">Autumn</div></div>
+        <div class="season-card"><div class="season-icon">❄️</div><div class="season-pct">19%</div><div class="season-lbl">Winter</div></div>
+        <div class="season-card"><div class="season-icon">🌸</div><div class="season-pct">22%</div><div class="season-lbl">Spring</div></div>
+      </div>
+    </div>
+
+    <div class="panel-section">
+      <div class="panel-title">Business Split</div>
+      <div style="display:flex;gap:10px;margin-top:4px">
+        <div style="flex:1;background:rgba(0,201,122,.12);border:1px solid var(--green);border-radius:8px;padding:10px;text-align:center">
+          <div style="font-size:16px;font-weight:900;color:var(--green)">MKR</div>
+          <div style="font-size:11px;color:rgba(255,255,255,.5);margin-top:2px">Mukuru</div>
+          <div style="font-size:13px;font-weight:700;color:#fff;margin-top:4px">62%</div>
+        </div>
+        <div style="flex:1;background:rgba(245,166,35,.12);border:1px solid var(--gold);border-radius:8px;padding:10px;text-align:center">
+          <div style="font-size:16px;font-weight:900;color:var(--gold)">MMY</div>
+          <div style="font-size:11px;color:rgba(255,255,255,.5);margin-top:2px">Mama Money</div>
+          <div style="font-size:13px;font-weight:700;color:#fff;margin-top:4px">38%</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel-section">
+      <div class="panel-title">ML Model Status</div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <div style="display:flex;justify-content:space-between;align-items:center;font-size:11px">
+          <span>Fraud Detection</span>
+          <span style="background:#1A4A2E;color:var(--green);padding:2px 8px;border-radius:4px;font-weight:700">AUC 0.958</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;font-size:11px">
+          <span>Churn Prediction</span>
+          <span style="background:#1A4A2E;color:var(--green);padding:2px 8px;border-radius:4px;font-weight:700">AUC 0.991</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;font-size:11px">
+          <span>Credit Risk PD</span>
+          <span style="background:#1A3A4A;color:var(--sky);padding:2px 8px;border-radius:4px;font-weight:700">AUC 0.948</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- MAP -->
+  <div id="map"></div>
+
+  <!-- RIGHT PANEL -->
+  <div class="right-panel">
+
+    <div class="ctrl-group">
+      <div class="ctrl-title">Map Controls</div>
+      <div class="ctrl-label">CIRCLE SIZE MODE</div>
+      <label class="radio-item"><input type="radio" name="size" value="volume" checked onchange="updateMap()"> Transfer volume</label>
+      <label class="radio-item"><input type="radio" name="size" value="count" onchange="updateMap()"> Transfer count</label>
+      <label class="radio-item"><input type="radio" name="size" value="revenue" onchange="updateMap()"> Net revenue</label>
+      <label class="radio-item"><input type="radio" name="size" value="fraud" onchange="updateMap()"> Fraud rate</label>
+      <div style="font-size:9px;color:rgba(255,255,255,.3);margin-top:4px">Circle area = relative value</div>
+    </div>
+
+    <div class="ctrl-group">
+      <div class="ctrl-label">COLOUR MODE</div>
+      <label class="radio-item"><input type="radio" name="colour" value="cluster" checked onchange="updateMap()"> ML cluster</label>
+      <label class="radio-item"><input type="radio" name="colour" value="business" onchange="updateMap()"> Business (MKR/MMY)</label>
+      <label class="radio-item"><input type="radio" name="colour" value="success" onchange="updateMap()"> Success rate</label>
+      <label class="radio-item"><input type="radio" name="colour" value="fx" onchange="updateMap()"> FX spread tier</label>
+    </div>
+
+    <div class="ctrl-group">
+      <div class="ctrl-label">CLUSTER LEGEND</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#FF6B6B"></div>High-Volume Core</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#F5A623"></div>Premium Corridor</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#4ECDC4"></div>Growth Market</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#00C97A"></div>Emerging Route</div>
+    </div>
+
+    <div class="ctrl-group">
+      <div class="ctrl-label">BUSINESS LEGEND</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#00C97A"></div>Mukuru (MKR)</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#F5A623"></div>Mama Money</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#A569BD"></div>Both brands</div>
+    </div>
+
+    <div class="ctrl-group">
+      <div class="ctrl-label">SUCCESS RATE</div>
+      <div class="legend-item"><div class="legend-sq" style="background:#00C97A"></div>&gt; 80% (Good)</div>
+      <div class="legend-item"><div class="legend-sq" style="background:#F5A623"></div>70–80% (Fair)</div>
+      <div class="legend-item"><div class="legend-sq" style="background:#FF6B6B"></div>&lt; 70% (At Risk)</div>
+    </div>
+
+  </div>
+
+</div>
+
+<!-- ══ TAB VIEWS (hidden by default) ══════════════════════════ -->
+<div id="view-dashboard" class="tab-view" style="display:none">
+  <div class="tv-wrap">
+    <div class="tv-title">📊 Executive Dashboard</div>
+    <div class="kpi-strip">
+      <div class="kv-card" style="--accent:#00C97A"><div class="kv-val">R 78B</div><div class="kv-lbl">Annual Volume</div></div>
+      <div class="kv-card" style="--accent:#F5A623"><div class="kv-val">5M+</div><div class="kv-lbl">Transfer Orders</div></div>
+      <div class="kv-card" style="--accent:#4ECDC4"><div class="kv-val">17</div><div class="kv-lbl">Active Corridors</div></div>
+      <div class="kv-card" style="--accent:#A569BD"><div class="kv-val">500K</div><div class="kv-lbl">Customers</div></div>
+      <div class="kv-card" style="--accent:#00C97A"><div class="kv-val">78.2%</div><div class="kv-lbl">Success Rate</div></div>
+      <div class="kv-card" style="--accent:#FF6B6B"><div class="kv-val">3.2 bps</div><div class="kv-lbl">Fraud Rate</div></div>
+      <div class="kv-card" style="--accent:#F5A623"><div class="kv-val">82%</div><div class="kv-lbl">KYC Complete</div></div>
+      <div class="kv-card" style="--accent:#4ECDC4"><div class="kv-val">R 18B</div><div class="kv-lbl">Net Revenue</div></div>
+    </div>
+    <div class="tv-grid2">
+      <div class="tv-card">
+        <div class="tv-card-title">Monthly Volume Trend (R Billion)</div>
+        <table class="dtable"><thead><tr><th>Month</th><th>MKR Vol</th><th>MMY Vol</th><th>Total</th><th>vs Prior</th></tr></thead><tbody>
+          <tr><td>Jan 2026</td><td style="color:#00C97A">8.2B</td><td style="color:#F5A623">4.1B</td><td>12.3B</td><td style="color:#4ECDC4">—</td></tr>
+          <tr><td>Feb 2026</td><td style="color:#00C97A">8.9B</td><td style="color:#F5A623">4.5B</td><td>13.4B</td><td style="color:#00C97A">+8.9%</td></tr>
+          <tr><td>Mar 2026</td><td style="color:#00C97A">9.4B</td><td style="color:#F5A623">4.8B</td><td>14.2B</td><td style="color:#00C97A">+6.0%</td></tr>
+          <tr><td>Apr 2026</td><td style="color:#00C97A">10.1B</td><td style="color:#F5A623">5.2B</td><td>15.3B</td><td style="color:#00C97A">+7.7%</td></tr>
+          <tr><td>May 2026</td><td style="color:#00C97A">10.8B</td><td style="color:#F5A623">5.6B</td><td>16.4B</td><td style="color:#00C97A">+7.2%</td></tr>
+          <tr><td>Jun 2026</td><td style="color:#00C97A">11.4B</td><td style="color:#F5A623">5.9B</td><td>17.3B</td><td style="color:#00C97A">+5.5%</td></tr>
+        </tbody></table>
+      </div>
+      <div class="tv-card">
+        <div class="tv-card-title">Business Split & Customer Segments</div>
+        <div style="display:flex;gap:16px;margin-bottom:16px">
+          <div style="flex:1;background:rgba(0,201,122,.1);border:1px solid rgba(0,201,122,.3);border-radius:10px;padding:14px;text-align:center">
+            <div style="font-size:28px;font-weight:900;color:#00C97A">62%</div>
+            <div style="font-size:12px;color:rgba(255,255,255,.6);margin-top:4px">Mukuru (MKR)</div>
+            <div style="font-size:11px;color:rgba(255,255,255,.4)">R 48.4B volume</div>
+          </div>
+          <div style="flex:1;background:rgba(245,166,35,.1);border:1px solid rgba(245,166,35,.3);border-radius:10px;padding:14px;text-align:center">
+            <div style="font-size:28px;font-weight:900;color:#F5A623">38%</div>
+            <div style="font-size:12px;color:rgba(255,255,255,.6);margin-top:4px">Mama Money (MMY)</div>
+            <div style="font-size:11px;color:rgba(255,255,255,.4)">R 29.6B volume</div>
+          </div>
+        </div>
+        <table class="dtable"><thead><tr><th>LTV Segment</th><th>Customers</th><th>% Base</th><th>Avg LTV</th></tr></thead><tbody>
+          <tr><td style="color:#FFD700">Champion</td><td>14,000</td><td>2.8%</td><td>R 8,200</td></tr>
+          <tr><td style="color:#F5A623">High Value</td><td>92,000</td><td>18.4%</td><td>R 3,100</td></tr>
+          <tr><td style="color:#A569BD">Medium Value</td><td>220,500</td><td>44.1%</td><td>R 680</td></tr>
+          <tr><td style="color:#4ECDC4">Low Value</td><td>131,500</td><td>26.3%</td><td>R 140</td></tr>
+          <tr><td style="color:#7F8C8D">Zero Value</td><td>42,000</td><td>8.4%</td><td>R 0</td></tr>
+        </tbody></table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="view-corridors" class="tab-view" style="display:none">
+  <div class="tv-wrap">
+    <div class="tv-title">🌍 All 17 Corridors — Performance Data</div>
+    <div class="tv-card" style="max-width:100%">
+      <table class="dtable" style="width:100%"><thead><tr>
+        <th>Corridor</th><th>Country</th><th>ML Cluster</th><th>Business</th>
+        <th>Volume (R B)</th><th>Transfers</th><th>Success %</th>
+        <th>Fraud bps</th><th>FX Spread %</th><th>Avg Send R</th>
+      </tr></thead><tbody id="corr-tbody"></tbody></table>
+    </div>
+  </div>
+</div>
+
+<div id="view-ml" class="tab-view" style="display:none">
+  <div class="tv-wrap">
+    <div class="tv-title">🤖 ML Model Results — Real Trained Scores</div>
+    <div class="kpi-strip">
+      <div class="kv-card" style="--accent:#00C97A"><div class="kv-val">0.9582</div><div class="kv-lbl">Fraud AUC-ROC</div></div>
+      <div class="kv-card" style="--accent:#4ECDC4"><div class="kv-val">0.9905</div><div class="kv-lbl">Churn AUC-ROC</div></div>
+      <div class="kv-card" style="--accent:#F5A623"><div class="kv-val">0.9475</div><div class="kv-lbl">Credit AUC-ROC</div></div>
+      <div class="kv-card" style="--accent:#A569BD"><div class="kv-val">GBM + RF</div><div class="kv-lbl">Algorithms</div></div>
+    </div>
+    <div class="tv-grid3">
+      <div class="tv-card">
+        <div class="tv-card-title" style="color:#FF6B6B">🔴 Fraud Detection (GBM)</div>
+        <div class="metric-row"><span>AUC-ROC</span><span class="metric-val" style="color:#00C97A">0.9582</span></div>
+        <div class="metric-row"><span>Avg Precision</span><span class="metric-val">0.7745</span></div>
+        <div class="metric-row"><span>CV Mean (3-fold)</span><span class="metric-val">0.9576 ± 0.0009</span></div>
+        <div class="metric-row"><span>Label Rate</span><span class="metric-val" style="color:#FF6B6B">10.3%</span></div>
+        <div class="metric-row"><span>Train / Test</span><span class="metric-val">160K / 40K</span></div>
+        <div style="margin-top:12px;font-size:11px;color:rgba(255,255,255,.5)">Top Features</div>
+        <div class="feat-bar"><div class="feat-lbl">Payment Attempts</div><div class="feat-track"><div class="feat-fill" style="width:31.2%;background:#FF6B6B"></div></div><div class="feat-pct">31.2%</div></div>
+        <div class="feat-bar"><div class="feat-lbl">Send Amount (log)</div><div class="feat-track"><div class="feat-fill" style="width:24.1%;background:#FF6B6B"></div></div><div class="feat-pct">24.1%</div></div>
+        <div class="feat-bar"><div class="feat-lbl">Hour of Day</div><div class="feat-track"><div class="feat-fill" style="width:13.8%;background:#FF6B6B"></div></div><div class="feat-pct">13.8%</div></div>
+        <div class="feat-bar"><div class="feat-lbl">KYC Level</div><div class="feat-track"><div class="feat-fill" style="width:10.2%;background:#FF6B6B"></div></div><div class="feat-pct">10.2%</div></div>
+        <div class="feat-bar"><div class="feat-lbl">FX Spread %</div><div class="feat-track"><div class="feat-fill" style="width:8.7%;background:#FF6B6B"></div></div><div class="feat-pct">8.7%</div></div>
+      </div>
+      <div class="tv-card">
+        <div class="tv-card-title" style="color:#4ECDC4">🔵 Customer Churn (Random Forest)</div>
+        <div class="metric-row"><span>AUC-ROC</span><span class="metric-val" style="color:#00C97A">0.9905</span></div>
+        <div class="metric-row"><span>Avg Precision</span><span class="metric-val">0.9192</span></div>
+        <div class="metric-row"><span>CV Mean (3-fold)</span><span class="metric-val">0.9907 ± 0.0003</span></div>
+        <div class="metric-row"><span>Label Rate</span><span class="metric-val" style="color:#F5A623">10.9%</span></div>
+        <div class="metric-row"><span>Train / Test</span><span class="metric-val">160K / 40K</span></div>
+        <div style="margin-top:12px;font-size:11px;color:rgba(255,255,255,.5)">Top Features</div>
+        <div class="feat-bar"><div class="feat-lbl">Days Since Last Tx</div><div class="feat-track"><div class="feat-fill" style="width:42.1%;background:#4ECDC4"></div></div><div class="feat-pct">42.1%</div></div>
+        <div class="feat-bar"><div class="feat-lbl">Monthly Tx Rate</div><div class="feat-track"><div class="feat-fill" style="width:19.8%;background:#4ECDC4"></div></div><div class="feat-pct">19.8%</div></div>
+        <div class="feat-bar"><div class="feat-lbl">Engagement Score</div><div class="feat-track"><div class="feat-fill" style="width:14.2%;background:#4ECDC4"></div></div><div class="feat-pct">14.2%</div></div>
+        <div class="feat-bar"><div class="feat-lbl">Total Transfers</div><div class="feat-track"><div class="feat-fill" style="width:9.8%;background:#4ECDC4"></div></div><div class="feat-pct">9.8%</div></div>
+        <div class="feat-bar"><div class="feat-lbl">Wallet Balance</div><div class="feat-track"><div class="feat-fill" style="width:7.1%;background:#4ECDC4"></div></div><div class="feat-pct">7.1%</div></div>
+      </div>
+      <div class="tv-card">
+        <div class="tv-card-title" style="color:#F5A623">🟡 Credit Risk PD (GBM)</div>
+        <div class="metric-row"><span>AUC-ROC</span><span class="metric-val" style="color:#4ECDC4">0.9475</span></div>
+        <div class="metric-row"><span>Avg Precision</span><span class="metric-val">0.9174</span></div>
+        <div class="metric-row"><span>CV Mean (3-fold)</span><span class="metric-val">0.9486 ± 0.0025</span></div>
+        <div class="metric-row"><span>Label Rate</span><span class="metric-val" style="color:#FF6B6B">37.4%</span></div>
+        <div class="metric-row"><span>Train / Test</span><span class="metric-val">12K / 3K</span></div>
+        <div style="margin-top:12px;font-size:11px;color:rgba(255,255,255,.5)">Top Features</div>
+        <div class="feat-bar"><div class="feat-lbl">DTI Ratio</div><div class="feat-track"><div class="feat-fill" style="width:35.8%;background:#F5A623"></div></div><div class="feat-pct">35.8%</div></div>
+        <div class="feat-bar"><div class="feat-lbl">Previous DPD</div><div class="feat-track"><div class="feat-fill" style="width:28.1%;background:#F5A623"></div></div><div class="feat-pct">28.1%</div></div>
+        <div class="feat-bar"><div class="feat-lbl">Employment Months</div><div class="feat-track"><div class="feat-fill" style="width:14.2%;background:#F5A623"></div></div><div class="feat-pct">14.2%</div></div>
+        <div class="feat-bar"><div class="feat-lbl">Income (log)</div><div class="feat-track"><div class="feat-fill" style="width:9.8%;background:#F5A623"></div></div><div class="feat-pct">9.8%</div></div>
+        <div class="feat-bar"><div class="feat-lbl">Loan Count</div><div class="feat-track"><div class="feat-fill" style="width:7.1%;background:#F5A623"></div></div><div class="feat-pct">7.1%</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="view-risk" class="tab-view" style="display:none">
+  <div class="tv-wrap">
+    <div class="tv-title">⚠️ Risk & Compliance Dashboard</div>
+    <div class="kpi-strip">
+      <div class="kv-card" style="--accent:#00C97A"><div class="kv-val">2.8 bps</div><div class="kv-lbl">Current Fraud Rate</div></div>
+      <div class="kv-card" style="--accent:#00C97A"><div class="kv-val">82.4%</div><div class="kv-lbl">KYC Completion</div></div>
+      <div class="kv-card" style="--accent:#F5A623"><div class="kv-val">11.2%</div><div class="kv-lbl">Loan Default Rate</div></div>
+      <div class="kv-card" style="--accent:#00C97A"><div class="kv-val">4.8%</div><div class="kv-lbl">IFRS 9 ECL Rate</div></div>
+    </div>
+    <div class="tv-grid2">
+      <div class="tv-card">
+        <div class="tv-card-title">Monthly Risk KPIs — RAG Status</div>
+        <table class="dtable"><thead><tr><th>Month</th><th>Fraud bps</th><th>Fraud RAG</th><th>KYC %</th><th>KYC RAG</th><th>Success %</th><th>Ops RAG</th></tr></thead><tbody>
+          <tr><td>Jan 2026</td><td>4.1</td><td style="color:#F5A623">🟡 AMBER</td><td>79.2%</td><td style="color:#F5A623">🟡 AMBER</td><td>76.1%</td><td style="color:#F5A623">🟡 AMBER</td></tr>
+          <tr><td>Feb 2026</td><td>3.8</td><td style="color:#F5A623">🟡 AMBER</td><td>79.8%</td><td style="color:#F5A623">🟡 AMBER</td><td>76.8%</td><td style="color:#F5A623">🟡 AMBER</td></tr>
+          <tr><td>Mar 2026</td><td>3.5</td><td style="color:#F5A623">🟡 AMBER</td><td>80.5%</td><td style="color:#00C97A">🟢 GREEN</td><td>77.4%</td><td style="color:#00C97A">🟢 GREEN</td></tr>
+          <tr><td>Apr 2026</td><td>3.2</td><td style="color:#00C97A">🟢 GREEN</td><td>81.2%</td><td style="color:#00C97A">🟢 GREEN</td><td>78.0%</td><td style="color:#00C97A">🟢 GREEN</td></tr>
+          <tr><td>May 2026</td><td>3.0</td><td style="color:#00C97A">🟢 GREEN</td><td>81.8%</td><td style="color:#00C97A">🟢 GREEN</td><td>78.6%</td><td style="color:#00C97A">🟢 GREEN</td></tr>
+          <tr><td>Jun 2026</td><td>2.8</td><td style="color:#00C97A">🟢 GREEN</td><td>82.4%</td><td style="color:#00C97A">🟢 GREEN</td><td>79.2%</td><td style="color:#00C97A">🟢 GREEN</td></tr>
+        </tbody></table>
+      </div>
+      <div class="tv-card">
+        <div class="tv-card-title">High-Risk Corridors (Fraud bps ≥ 5)</div>
+        <table class="dtable"><thead><tr><th>Corridor</th><th>Fraud bps</th><th>Success %</th><th>ML Cluster</th><th>Status</th></tr></thead><tbody>
+          <tr><td>ZA-CD (DR Congo)</td><td style="color:#FF6B6B">8.2</td><td style="color:#FF6B6B">64.2%</td><td>Emerging</td><td style="color:#FF6B6B">🔴 HIGH RISK</td></tr>
+          <tr><td>ZA-AO (Angola)</td><td style="color:#FF6B6B">6.8</td><td style="color:#FF6B6B">68.4%</td><td>Emerging</td><td style="color:#FF6B6B">🔴 HIGH RISK</td></tr>
+          <tr><td>ZA-NG (Nigeria)</td><td style="color:#FF6B6B">6.1</td><td style="color:#FF6B6B">69.8%</td><td>Growth</td><td style="color:#F5A623">🟡 ELEVATED</td></tr>
+          <tr><td>ZA-ET (Ethiopia)</td><td style="color:#F5A623">7.1</td><td style="color:#FF6B6B">66.8%</td><td>Emerging</td><td style="color:#FF6B6B">🔴 HIGH RISK</td></tr>
+          <tr><td>ZA-MG (Madagascar)</td><td style="color:#F5A623">5.2</td><td style="color:#F5A623">71.2%</td><td>Growth</td><td style="color:#F5A623">🟡 ELEVATED</td></tr>
+          <tr><td>ZA-GH (Ghana)</td><td style="color:#F5A623">4.6</td><td style="color:#F5A623">73.1%</td><td>Growth</td><td style="color:#F5A623">🟡 ELEVATED</td></tr>
+        </tbody></table>
+        <div style="margin-top:12px;padding:10px;background:rgba(255,107,107,.08);border:1px solid rgba(255,107,107,.2);border-radius:8px;font-size:11px;color:rgba(255,255,255,.6)">
+          ⚠️ Fraud Detection model (AUC 0.9582) flags 10.3% of transactions for review. Enhanced KYC enforcement recommended for CD, AO, ET corridors.
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="view-fx" class="tab-view" style="display:none">
+  <div class="tv-wrap">
+    <div class="tv-title">💱 FX Rates & Corridor Profitability</div>
+    <div class="kpi-strip">
+      <div class="kv-card" style="--accent:#F5A623"><div class="kv-val">5.42%</div><div class="kv-lbl">Avg FX Spread</div></div>
+      <div class="kv-card" style="--accent:#00C97A"><div class="kv-val">R 18B</div><div class="kv-lbl">FX Revenue</div></div>
+      <div class="kv-card" style="--accent:#4ECDC4"><div class="kv-val">6.44%</div><div class="kv-lbl">Highest Spread (MU)</div></div>
+      <div class="kv-card" style="--accent:#FF6B6B"><div class="kv-val">4.55%</div><div class="kv-lbl">Lowest Spread (CD)</div></div>
+    </div>
+    <div class="tv-card" style="max-width:100%">
+      <div class="tv-card-title">Corridor FX Analysis — All 17 Routes</div>
+      <table class="dtable" style="width:100%"><thead><tr>
+        <th>Corridor</th><th>Currency Pair</th><th>FX Spread %</th><th>Fee Share %</th><th>Net Margin %</th><th>FX Revenue (R B)</th><th>Tier</th>
+      </tr></thead><tbody>
+        <tr><td>ZA-MU</td><td>ZAR/MUR</td><td style="color:#00C97A">6.44%</td><td>5.76%</td><td>0.68%</td><td>0.71B</td><td style="color:#F5A623">Premium</td></tr>
+        <tr><td>ZA-LS</td><td>ZAR/LSL</td><td style="color:#00C97A">6.21%</td><td>5.55%</td><td>0.66%</td><td>1.48B</td><td style="color:#F5A623">Premium</td></tr>
+        <tr><td>ZA-SZ</td><td>ZAR/SZL</td><td style="color:#00C97A">6.05%</td><td>5.41%</td><td>0.64%</td><td>0.99B</td><td style="color:#F5A623">Premium</td></tr>
+        <tr><td>ZA-NA</td><td>ZAR/NAD</td><td style="color:#00C97A">5.95%</td><td>5.31%</td><td>0.64%</td><td>1.16B</td><td style="color:#F5A623">Premium</td></tr>
+        <tr><td>ZA-BW</td><td>ZAR/BWP</td><td style="color:#00C97A">5.88%</td><td>5.24%</td><td>0.64%</td><td>1.68B</td><td style="color:#F5A623">Premium</td></tr>
+        <tr><td>ZA-ZW</td><td>USD/ZWG</td><td style="color:#4ECDC4">5.41%</td><td>4.82%</td><td>0.59%</td><td>4.82B</td><td style="color:#FF6B6B">High-Vol</td></tr>
+        <tr><td>ZA-MZ</td><td>ZAR/MZN</td><td style="color:#4ECDC4">5.38%</td><td>4.78%</td><td>0.60%</td><td>3.21B</td><td style="color:#FF6B6B">High-Vol</td></tr>
+        <tr><td>ZA-ZM</td><td>ZAR/ZMW</td><td style="color:#4ECDC4">5.39%</td><td>4.80%</td><td>0.59%</td><td>2.69B</td><td style="color:#FF6B6B">High-Vol</td></tr>
+        <tr><td>ZA-MW</td><td>ZAR/MWK</td><td style="color:#4ECDC4">5.52%</td><td>4.90%</td><td>0.62%</td><td>1.71B</td><td style="color:#FF6B6B">High-Vol</td></tr>
+        <tr><td>ZA-KE</td><td>ZAR/KES</td><td style="color:#F5A623">5.22%</td><td>4.61%</td><td>0.61%</td><td>1.10B</td><td style="color:#4ECDC4">Growth</td></tr>
+        <tr><td>ZA-TZ</td><td>ZAR/TZS</td><td style="color:#F5A623">5.15%</td><td>4.54%</td><td>0.61%</td><td>1.27B</td><td style="color:#4ECDC4">Growth</td></tr>
+        <tr><td>ZA-GH</td><td>ZAR/GHS</td><td style="color:#F5A623">5.08%</td><td>4.47%</td><td>0.61%</td><td>0.74B</td><td style="color:#4ECDC4">Growth</td></tr>
+        <tr><td>ZA-NG</td><td>NGN/ZAR</td><td style="color:#F5A623">4.85%</td><td>4.19%</td><td>0.66%</td><td>0.87B</td><td style="color:#4ECDC4">Growth</td></tr>
+        <tr><td>ZA-MG</td><td>ZAR/MGA</td><td style="color:#FF6B6B">4.92%</td><td>4.28%</td><td>0.64%</td><td>0.44B</td><td style="color:#00C97A">Emerging</td></tr>
+        <tr><td>ZA-AO</td><td>ZAR/AOA</td><td style="color:#FF6B6B">4.71%</td><td>4.10%</td><td>0.61%</td><td>0.33B</td><td style="color:#00C97A">Emerging</td></tr>
+        <tr><td>ZA-CD</td><td>ZAR/CDF</td><td style="color:#FF6B6B">4.55%</td><td>3.96%</td><td>0.59%</td><td>0.25B</td><td style="color:#00C97A">Emerging</td></tr>
+        <tr><td>ZA-ET</td><td>ZAR/ETB</td><td style="color:#FF6B6B">4.68%</td><td>4.08%</td><td>0.60%</td><td>0.21B</td><td style="color:#00C97A">Emerging</td></tr>
+      </tbody></table>
+    </div>
+  </div>
+</div>
+
+<div id="view-insights" class="tab-view" style="display:none">
+  <div class="tv-wrap">
+    <div class="tv-title">💡 Intelligence Insights — Recommendations & Problem Solving</div>
+    <div class="ins-grid">
+      <div class="ins-card priority-high">
+        <div class="ins-header"><span class="ins-badge" style="background:#FF6B6B">🔴 HIGH PRIORITY</span><span class="ins-tag">Risk</span></div>
+        <div class="ins-title">Emerging Corridor Fraud Surge</div>
+        <div class="ins-body">CD, AO, ET corridors showing 6.8–8.2 bps fraud — 2.5× platform average. Fraud model flags these clusters but real-time intervention is absent.</div>
+        <div class="ins-rec">
+          <div class="ins-rec-title">Recommendations</div>
+          <div class="ins-rec-item">↗ Deploy real-time Snowpark UDF fraud scoring at submission — block transactions scoring above 0.75 threshold</div>
+          <div class="ins-rec-item">↗ Enforce LEVEL_2 KYC minimum for CD/AO/ET before allowing transactions &gt; R 500</div>
+          <div class="ins-rec-item">↗ Add velocity rule: flag &gt; 3 failed attempts in 10 min per customer</div>
+        </div>
+        <div class="ins-impact">Estimated fraud reduction: <strong style="color:#00C97A">−35% bps</strong> in 90 days</div>
+      </div>
+      <div class="ins-card priority-high">
+        <div class="ins-header"><span class="ins-badge" style="background:#FF6B6B">🔴 HIGH PRIORITY</span><span class="ins-tag">Revenue</span></div>
+        <div class="ins-title">Zimbabwe Volume vs Low Success Rate</div>
+        <div class="ins-body">ZA-ZW is the largest corridor (R 18.4B) but success rate is only 78.2% — 4pp below premium corridors. Each 1pp improvement = R 184M additional completions.</div>
+        <div class="ins-rec">
+          <div class="ins-rec-title">Recommendations</div>
+          <div class="ins-rec-item">↗ Add mobile money payout option (EcoCash) alongside cash — reduces failure caused by agent unavailability</div>
+          <div class="ins-rec-item">↗ Pre-validate recipient account details at submission using ZWG bank API</div>
+          <div class="ins-rec-item">↗ Add retry logic with alternative payout rail after 30-min timeout</div>
+        </div>
+        <div class="ins-impact">Revenue upside if success → 82%: <strong style="color:#00C97A">+R 736M/year</strong></div>
+      </div>
+      <div class="ins-card priority-med">
+        <div class="ins-header"><span class="ins-badge" style="background:#F5A623">🟡 MEDIUM</span><span class="ins-tag">Growth</span></div>
+        <div class="ins-title">Churn Model — 10.9% at Risk</div>
+        <div class="ins-body">Churn model (AUC 0.9905) identifies 54,500 customers as high churn risk. Top signal: 42% importance from "days since last transfer" — inactivity is the key driver.</div>
+        <div class="ins-rec">
+          <div class="ins-rec-title">Recommendations</div>
+          <div class="ins-rec-item">↗ Trigger automated win-back campaign at day 21 of inactivity (before the 30-day cliff)</div>
+          <div class="ins-rec-item">↗ Offer fee waiver on next transfer for customers with engagement_score &lt; 40</div>
+          <div class="ins-rec-item">↗ Push wallet balance nudge via USSD/app for customers with balance &gt; R 50 but zero sends in 14 days</div>
+        </div>
+        <div class="ins-impact">Retention of 10% of at-risk = <strong style="color:#00C97A">5,450 customers saved</strong></div>
+      </div>
+      <div class="ins-card priority-med">
+        <div class="ins-header"><span class="ins-badge" style="background:#F5A623">🟡 MEDIUM</span><span class="ins-tag">Lending</span></div>
+        <div class="ins-title">IFRS 9 ECL — Stage Migration Risk</div>
+        <div class="ins-body">Credit model (AUC 0.9475) shows 37.4% default rate in training data. DTI ratio (35.8% importance) and prior DPD (28.1%) are dominant. IFRS 9 Stage 2 migration threshold needs review.</div>
+        <div class="ins-rec">
+          <div class="ins-rec-title">Recommendations</div>
+          <div class="ins-rec-item">↗ Set automatic Stage 2 trigger when PD score &gt; 0.35 (current model threshold)</div>
+          <div class="ins-rec-item">↗ Reject applications where DTI &gt; 0.45 and prev_dpd &gt; 30 — reduces ECL exposure</div>
+          <div class="ins-rec-item">↗ Implement Early Warning System: Snowpark scoring at 7-day intervals</div>
+        </div>
+        <div class="ins-impact">ECL reduction estimate: <strong style="color:#00C97A">−15–20% provision</strong></div>
+      </div>
+      <div class="ins-card priority-low">
+        <div class="ins-header"><span class="ins-badge" style="background:#4ECDC4">🔵 OPPORTUNITY</span><span class="ins-tag">FX</span></div>
+        <div class="ins-title">Premium Corridor FX Margin Expansion</div>
+        <div class="ins-body">Lesotho, Eswatini, Mauritius corridors carry 6.05–6.44% FX spreads with 80–87% success rates. These "Premium" corridors are underinvested in marketing volume.</div>
+        <div class="ins-rec">
+          <div class="ins-rec-title">Recommendations</div>
+          <div class="ins-rec-item">↗ Increase marketing spend on MU/LS/SZ corridors — higher margin, lower fraud (0.9–1.8 bps)</div>
+          <div class="ins-rec-item">↗ Launch Premium loyalty tier for customers transacting exclusively on premium corridors</div>
+          <div class="ins-rec-item">↗ Partner with Mauritian banks for bulk settlement to reduce interbank costs</div>
+        </div>
+        <div class="ins-impact">Volume uplift target: <strong style="color:#00C97A">+25% in 6 months</strong></div>
+      </div>
+      <div class="ins-card priority-low">
+        <div class="ins-header"><span class="ins-badge" style="background:#A569BD">🟣 DATA / TECH</span><span class="ins-tag">Platform</span></div>
+        <div class="ins-title">KYC Completion Gap — 18% Unverified</div>
+        <div class="ins-body">82% KYC completion means 90,000 customers at LEVEL_0/1. These customers have 3× higher fraud rates and lower LTV. KYC is also the #4 fraud feature (10.2% importance).</div>
+        <div class="ins-rec">
+          <div class="ins-rec-title">Recommendations</div>
+          <div class="ins-rec-item">↗ Implement progressive KYC: gate R 1,000+ transactions behind LEVEL_2 (ID verification)</div>
+          <div class="ins-rec-item">↗ Build dbt mart_kyc_funnel to track weekly KYC conversion by channel and corridor</div>
+          <div class="ins-rec-item">↗ Add Snowflake alert: trigger when corridor KYC completion drops below 70%</div>
+        </div>
+        <div class="ins-impact">KYC uplift to 90% = <strong style="color:#00C97A">fraud bps −1.2, LTV +8%</strong></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+/* ── TAB VIEW STYLES ──────────────────────────────────────────── */
+.tab-view{flex:1;overflow-y:auto;background:#1E1008}
+.tv-wrap{padding:24px 28px;max-width:1400px;margin:0 auto}
+.tv-title{font-size:20px;font-weight:900;color:#00C97A;margin-bottom:20px;letter-spacing:.5px}
+.kpi-strip{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:24px}
+.kv-card{flex:1;min-width:120px;background:rgba(255,220,150,.05);border:1px solid rgba(245,166,35,.12);
+  border-top:3px solid var(--accent);border-radius:10px;padding:14px 16px;text-align:center}
+.kv-val{font-size:22px;font-weight:900;color:var(--accent)}
+.kv-lbl{font-size:10px;color:rgba(255,255,255,.5);margin-top:4px;text-transform:uppercase;letter-spacing:.8px}
+.tv-grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+.tv-grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px}
+.tv-card{background:rgba(255,220,150,.04);border:1px solid rgba(245,166,35,.12);border-radius:12px;padding:18px}
+.tv-card-title{font-size:13px;font-weight:800;color:#F5ECD7;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid rgba(245,166,35,.12)}
+.dtable{width:100%;border-collapse:collapse;font-size:12px}
+.dtable th{background:rgba(61,37,16,.8);color:rgba(245,236,215,.5);font-size:10px;font-weight:700;text-transform:uppercase;
+  letter-spacing:.8px;padding:8px 10px;text-align:left;border-bottom:1px solid rgba(245,166,35,.15)}
+.dtable td{padding:8px 10px;border-bottom:1px solid rgba(255,255,255,.05);color:rgba(255,255,255,.8)}
+.dtable tr:hover td{background:rgba(255,255,255,.04)}
+.metric-row{display:flex;justify-content:space-between;align-items:center;padding:7px 0;
+  border-bottom:1px solid rgba(255,255,255,.06);font-size:12px;color:rgba(255,255,255,.6)}
+.metric-val{font-weight:700;color:#fff}
+.feat-bar{display:flex;align-items:center;gap:8px;margin-top:6px;font-size:10px}
+.feat-lbl{width:130px;color:rgba(255,255,255,.6);flex-shrink:0}
+.feat-track{flex:1;height:6px;background:rgba(255,255,255,.08);border-radius:3px}
+.feat-fill{height:6px;border-radius:3px;transition:.3s}
+.feat-pct{width:36px;text-align:right;color:rgba(255,255,255,.5);flex-shrink:0}
+/* Insights */
+.ins-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.ins-card{background:rgba(255,220,150,.04);border:1px solid rgba(245,166,35,.12);border-radius:12px;padding:18px}
+.priority-high{border-left:3px solid #FF6B6B}
+.priority-med{border-left:3px solid #F5A623}
+.priority-low{border-left:3px solid #4ECDC4}
+.ins-header{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.ins-badge{font-size:10px;font-weight:800;padding:3px 8px;border-radius:12px;color:#fff}
+.ins-tag{font-size:10px;color:rgba(255,255,255,.4);background:rgba(255,255,255,.06);padding:3px 8px;border-radius:12px}
+.ins-title{font-size:14px;font-weight:800;color:#fff;margin-bottom:8px}
+.ins-body{font-size:12px;color:rgba(255,255,255,.55);line-height:1.6;margin-bottom:12px}
+.ins-rec{background:rgba(0,201,122,.06);border:1px solid rgba(0,201,122,.15);border-radius:8px;padding:12px;margin-bottom:10px}
+.ins-rec-title{font-size:10px;font-weight:800;color:#00C97A;text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px}
+.ins-rec-item{font-size:11px;color:rgba(255,255,255,.65);margin-bottom:6px;padding-left:4px}
+.ins-impact{font-size:11px;color:rgba(255,255,255,.45);border-top:1px solid rgba(255,255,255,.07);padding-top:10px;margin-top:4px}
+@media(max-width:900px){.tv-grid2,.tv-grid3,.ins-grid{grid-template-columns:1fr}}
+</style>
+
+<script>
+// ── CORRIDOR DATA ──────────────────────────────────────────────
+const corridors = [
+  // ZA-ZW (Zimbabwe) — biggest corridor
+  { id:"ZA-ZW", name:"Zimbabwe", city:"Harare",
+    lat:-17.83, lng:31.05,
+    cluster:"high_volume", business:"both",
+    volume_m:18.4, count:820000, revenue_m:3.2,
+    success_rate:78.2, fx_spread:5.41, fraud_bps:3.2,
+    mkr_pct:68, mmy_pct:32,
+    avg_send:1240, top_channel:"App",
+    desc:"Largest corridor by volume. High frequency, cash payout dominant.",
+    countries:["ZW"] },
+
+  // ZA-MZ (Mozambique)
+  { id:"ZA-MZ", name:"Mozambique", city:"Maputo",
+    lat:-25.97, lng:32.58,
+    cluster:"high_volume", business:"both",
+    volume_m:12.1, count:540000, revenue_m:2.1,
+    success_rate:76.8, fx_spread:5.38, fraud_bps:2.8,
+    mkr_pct:71, mmy_pct:29,
+    avg_send:1150, top_channel:"USSD",
+    desc:"Second largest. Dominated by Maputo metro workers." },
+
+  // ZA-ZM (Zambia)
+  { id:"ZA-ZM", name:"Zambia", city:"Lusaka",
+    lat:-15.41, lng:28.28,
+    cluster:"high_volume", business:"mkr",
+    volume_m:8.7, count:390000, revenue_m:1.5,
+    success_rate:79.4, fx_spread:5.39, fraud_bps:2.1,
+    mkr_pct:85, mmy_pct:15,
+    avg_send:1320, top_channel:"App",
+    desc:"Strong Mukuru base. Mobile money payout growing fast." },
+
+  // ZA-MW (Malawi)
+  { id:"ZA-MW", name:"Malawi", city:"Blantyre",
+    lat:-15.79, lng:35.00,
+    cluster:"high_volume", business:"mkr",
+    volume_m:6.2, count:280000, revenue_m:1.1,
+    success_rate:77.1, fx_spread:5.52, fraud_bps:3.5,
+    mkr_pct:90, mmy_pct:10,
+    avg_send:980, top_channel:"Branch",
+    desc:"Mukuru dominant. Cash payout via retail agents." },
+
+  // ZA-LS (Lesotho) — premium
+  { id:"ZA-LS", name:"Lesotho", city:"Maseru",
+    lat:-29.32, lng:27.48,
+    cluster:"premium", business:"both",
+    volume_m:4.8, count:195000, revenue_m:1.0,
+    success_rate:82.3, fx_spread:6.21, fraud_bps:1.8,
+    mkr_pct:55, mmy_pct:45,
+    avg_send:1680, top_channel:"App",
+    desc:"Highest FX margin corridor. Premium senders, digital-first." },
+
+  // ZA-SZ (Eswatini)
+  { id:"ZA-SZ", name:"Eswatini", city:"Mbabane",
+    lat:-26.32, lng:31.14,
+    cluster:"premium", business:"mmy",
+    volume_m:3.1, count:128000, revenue_m:0.7,
+    success_rate:84.1, fx_spread:6.05, fraud_bps:1.4,
+    mkr_pct:30, mmy_pct:70,
+    avg_send:1510, top_channel:"App",
+    desc:"Mama Money stronghold. Wallet-first, high completion rate." },
+
+  // ZA-BW (Botswana)
+  { id:"ZA-BW", name:"Botswana", city:"Gaborone",
+    lat:-24.65, lng:25.91,
+    cluster:"premium", business:"both",
+    volume_m:5.4, count:210000, revenue_m:1.1,
+    success_rate:81.7, fx_spread:5.88, fraud_bps:2.0,
+    mkr_pct:52, mmy_pct:48,
+    avg_send:1720, top_channel:"App",
+    desc:"Above-average send amounts. High KYC completion." },
+
+  // ZA-NA (Namibia)
+  { id:"ZA-NA", name:"Namibia", city:"Windhoek",
+    lat:-22.56, lng:17.08,
+    cluster:"premium", business:"mkr",
+    volume_m:3.9, count:142000, revenue_m:0.8,
+    success_rate:80.5, fx_spread:5.95, fraud_bps:1.9,
+    mkr_pct:78, mmy_pct:22,
+    avg_send:1590, top_channel:"Bank",
+    desc:"Bank payout preferred. Strong Mukuru card usage." },
+
+  // ZA-TZ (Tanzania) — growth
+  { id:"ZA-TZ", name:"Tanzania", city:"Dar es Salaam",
+    lat:-6.79, lng:39.21,
+    cluster:"growth", business:"both",
+    volume_m:4.1, count:168000, revenue_m:0.9,
+    success_rate:74.3, fx_spread:5.15, fraud_bps:4.1,
+    mkr_pct:60, mmy_pct:40,
+    avg_send:1080, top_channel:"Mobile Money",
+    desc:"Fast-growing. M-Pesa integration driving volume." },
+
+  // ZA-KE (Kenya) — growth
+  { id:"ZA-KE", name:"Kenya", city:"Nairobi",
+    lat:-1.29, lng:36.82,
+    cluster:"growth", business:"mmy",
+    volume_m:3.6, count:148000, revenue_m:0.8,
+    success_rate:75.6, fx_spread:5.22, fraud_bps:3.8,
+    mkr_pct:35, mmy_pct:65,
+    avg_send:1140, top_channel:"Mobile Money",
+    desc:"Mama Money expanding. M-Pesa and bank dual payout." },
+
+  // ZA-MG (Madagascar) — growth
+  { id:"ZA-MG", name:"Madagascar", city:"Antananarivo",
+    lat:-18.91, lng:47.54,
+    cluster:"growth", business:"mkr",
+    volume_m:1.8, count:72000, revenue_m:0.4,
+    success_rate:71.2, fx_spread:4.92, fraud_bps:5.2,
+    mkr_pct:88, mmy_pct:12,
+    avg_send:890, top_channel:"Cash",
+    desc:"Emerging. Cash payout via partner network. High fraud watch." },
+
+  // ZA-MU (Mauritius) — premium niche
+  { id:"ZA-MU", name:"Mauritius", city:"Port Louis",
+    lat:-20.16, lng:57.50,
+    cluster:"premium", business:"mmy",
+    volume_m:2.2, count:64000, revenue_m:0.6,
+    success_rate:87.4, fx_spread:6.44, fraud_bps:0.9,
+    mkr_pct:20, mmy_pct:80,
+    avg_send:2140, top_channel:"Bank",
+    desc:"Highest avg send amount. Premium professionals, bank payout." },
+
+  // ZA-GH (Ghana) — growth
+  { id:"ZA-GH", name:"Ghana", city:"Accra",
+    lat:5.56, lng:-0.20,
+    cluster:"growth", business:"both",
+    volume_m:2.9, count:118000, revenue_m:0.6,
+    success_rate:73.1, fx_spread:5.08, fraud_bps:4.6,
+    mkr_pct:55, mmy_pct:45,
+    avg_send:1050, top_channel:"Mobile Money",
+    desc:"West Africa expansion. MTN MoMo integration live." },
+
+  // ZA-NG (Nigeria) — growth
+  { id:"ZA-NG", name:"Nigeria", city:"Lagos",
+    lat:6.46, lng:3.38,
+    cluster:"growth", business:"mmy",
+    volume_m:3.4, count:138000, revenue_m:0.7,
+    success_rate:69.8, fx_spread:4.85, fraud_bps:6.1,
+    mkr_pct:25, mmy_pct:75,
+    avg_send:1180, top_channel:"Bank",
+    desc:"Highest fraud rate. Naira volatility impacts FX margins." },
+
+  // ZA-AO (Angola) — emerging
+  { id:"ZA-AO", name:"Angola", city:"Luanda",
+    lat:-8.84, lng:13.23,
+    cluster:"emerging", business:"mkr",
+    volume_m:1.4, count:52000, revenue_m:0.3,
+    success_rate:68.4, fx_spread:4.71, fraud_bps:6.8,
+    mkr_pct:92, mmy_pct:8,
+    avg_send:920, top_channel:"Cash",
+    desc:"New corridor. Kwanza FX instability. Manual compliance reviews." },
+
+  // ZA-CD (DRC) — emerging
+  { id:"ZA-CD", name:"DR Congo", city:"Kinshasa",
+    lat:-4.32, lng:15.32,
+    cluster:"emerging", business:"mkr",
+    volume_m:1.1, count:44000, revenue_m:0.25,
+    success_rate:64.2, fx_spread:4.55, fraud_bps:8.2,
+    mkr_pct:95, mmy_pct:5,
+    avg_send:870, top_channel:"Cash",
+    desc:"Highest risk corridor. USD dollarisation helps FX. AML intensive." },
+
+  // ZA-ET (Ethiopia) — emerging
+  { id:"ZA-ET", name:"Ethiopia", city:"Addis Ababa",
+    lat:9.03, lng:38.74,
+    cluster:"emerging", business:"mkr",
+    volume_m:0.9, count:36000, revenue_m:0.2,
+    success_rate:66.8, fx_spread:4.68, fraud_bps:7.1,
+    mkr_pct:89, mmy_pct:11,
+    avg_send:810, top_channel:"Bank",
+    desc:"Pilot corridor. Birr restrictions complicate payouts." },
+];
+
+// ── COLOUR FUNCTIONS ───────────────────────────────────────────
+const CLUSTER_COLORS = {
+  high_volume:"#FF6B6B", premium:"#F5A623", growth:"#4ECDC4", emerging:"#00C97A"
+};
+const BUSINESS_COLORS = { mkr:"#00C97A", mmy:"#F5A623", both:"#A569BD" };
+
+function getColor(c, mode) {
+  if (mode === "cluster")  return CLUSTER_COLORS[c.cluster];
+  if (mode === "business") return BUSINESS_COLORS[c.business];
+  if (mode === "success") {
+    if (c.success_rate >= 80) return "#00C97A";
+    if (c.success_rate >= 70) return "#F5A623";
+    return "#FF6B6B";
+  }
+  if (mode === "fx") {
+    if (c.fx_spread >= 6)    return "#FF6B6B";   // premium
+    if (c.fx_spread >= 5.5)  return "#F5A623";
+    if (c.fx_spread >= 5)    return "#4ECDC4";
+    return "#00C97A";
+  }
+  return "#4ECDC4";
+}
+
+function getRadius(c, mode) {
+  const scales = {
+    volume:  { vals: corridors.map(x=>x.volume_m),  min:8,  max:48 },
+    count:   { vals: corridors.map(x=>x.count),     min:8,  max:48 },
+    revenue: { vals: corridors.map(x=>x.revenue_m), min:8,  max:48 },
+    fraud:   { vals: corridors.map(x=>x.fraud_bps), min:6,  max:40 },
+  };
+  const s = scales[mode];
+  const mn = Math.min(...s.vals), mx = Math.max(...s.vals);
+  const raw = mode === "volume" ? c.volume_m : mode === "count" ? c.count : mode === "revenue" ? c.revenue_m : c.fraud_bps;
+  return s.min + (raw - mn) / (mx - mn) * (s.max - s.min);
+}
+
+// ── MAP INIT ──────────────────────────────────────────────────
+const map = L.map("map", {
+  center: [-10, 27],
+  zoom: 4,
+  zoomControl: true,
+});
+
+L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
+  attribution: '&copy; <a href="https://carto.com/">CARTO</a>',
+  subdomains: "abcd", maxZoom: 19
+}).addTo(map);
+
+// Draw South Africa origin marker
+L.circleMarker([-28.5, 24.7], {
+  radius: 14, color:"#00C97A", fillColor:"#00C97A",
+  fillOpacity:0.9, weight:3
+}).addTo(map).bindTooltip("<strong>🇿🇦 South Africa</strong><br>Origin for all corridors", {
+  permanent:false, direction:"right",
+  className:"leaflet-popup-content-wrapper"
+});
+
+// Animated pulse on SA
+const pulse = L.circleMarker([-28.5, 24.7], {
+  radius:22, color:"#00C97A", fillColor:"transparent",
+  fillOpacity:0, weight:2, opacity:0.5
+}).addTo(map);
+
+let circles = [];
+let activeCluster = null;
+
+function buildPopup(c) {
+  const clrCl = CLUSTER_COLORS[c.cluster];
+  return `<div class="popup-title">🌍 ZA → ${c.name} <span class="badge" style="background:${clrCl}22;color:${clrCl};border:1px solid ${clrCl}">${c.cluster.replace("_"," ")}</span></div>
+    <div style="font-size:11px;color:rgba(255,255,255,.55);margin-bottom:8px">${c.desc}</div>
+    <div class="popup-grid">
+      <div class="popup-kpi"><div class="popup-kpi-v" style="color:#00C97A">R ${c.volume_m}B</div><div class="popup-kpi-l">Annual Volume</div></div>
+      <div class="popup-kpi"><div class="popup-kpi-v" style="color:#F5A623">${(c.count/1000).toFixed(0)}K</div><div class="popup-kpi-l">Transfers/yr</div></div>
+      <div class="popup-kpi"><div class="popup-kpi-v" style="color:#4ECDC4">${c.success_rate}%</div><div class="popup-kpi-l">Success Rate</div></div>
+      <div class="popup-kpi"><div class="popup-kpi-v" style="color:#FF6B6B">${c.fraud_bps} bps</div><div class="popup-kpi-l">Fraud Rate</div></div>
+      <div class="popup-kpi"><div class="popup-kpi-v" style="color:#A569BD">${c.fx_spread}%</div><div class="popup-kpi-l">FX Spread</div></div>
+      <div class="popup-kpi"><div class="popup-kpi-v" style="color:#fff">R ${c.avg_send}</div><div class="popup-kpi-l">Avg Send</div></div>
+    </div>
+    <div style="margin-top:10px;font-size:11px;color:rgba(255,255,255,.4)">
+      Top channel: <strong style="color:#fff">${c.top_channel}</strong> &nbsp;|&nbsp;
+      MKR: <strong style="color:#00C97A">${c.mkr_pct}%</strong> &nbsp;|&nbsp;
+      MMY: <strong style="color:#F5A623">${c.mmy_pct}%</strong>
+    </div>`;
+}
+
+function drawLines(c, color) {
+  return L.polyline([[-28.5, 24.7], [c.lat, c.lng]], {
+    color: color, weight: 1.5, opacity: 0.35, dashArray:"6,8"
+  });
+}
+
+function updateMap() {
+  const sizeMode   = document.querySelector("input[name=size]:checked").value;
+  const colourMode = document.querySelector("input[name=colour]:checked").value;
+
+  circles.forEach(obj => { obj.circle.remove(); obj.line.remove(); });
+  circles = [];
+
+  corridors.forEach(c => {
+    if (activeCluster && c.cluster !== activeCluster) return;
+
+    const color  = getColor(c, colourMode);
+    const radius = getRadius(c, sizeMode);
+    const line   = drawLines(c, color).addTo(map);
+
+    const circle = L.circleMarker([c.lat, c.lng], {
+      radius, color, fillColor: color,
+      fillOpacity: 0.80, weight: 2
+    }).addTo(map)
+      .bindPopup(buildPopup(c), { maxWidth:320 })
+      .bindTooltip(`<strong>${c.name}</strong><br>Vol: R ${c.volume_m}B &nbsp;|&nbsp; Success: ${c.success_rate}%`, {
+        direction:"top", offset:[0,-4]
+      });
+
+    circle.on("mouseover", function() {
+      this.setStyle({ fillOpacity:1, weight:3, radius: radius + 3 });
+      line.setStyle({ opacity:0.8, weight:2.5 });
+    });
+    circle.on("mouseout", function() {
+      this.setStyle({ fillOpacity:0.80, weight:2, radius });
+      line.setStyle({ opacity:0.35, weight:1.5 });
+    });
+
+    circles.push({ circle, line });
+  });
+}
+
+function filterCluster(cluster) {
+  activeCluster = (activeCluster === cluster) ? null : cluster;
+  updateMap();
+}
+
+// ── DATA MODEL MODAL ──────────────────────────────────────────
+function showDataModel() {
+  const overlay = document.createElement('div');
+  overlay.id = 'dmOverlay';
+  overlay.style.cssText = `position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9000;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px)`;
+  overlay.onclick = e => { if(e.target===overlay) overlay.remove(); };
+  overlay.innerHTML = `
+  <div style="background:#0D2137;border:1px solid rgba(0,201,122,.3);border-radius:16px;width:min(900px,95vw);max-height:85vh;overflow-y:auto;padding:32px;box-shadow:0 24px 80px rgba(0,0,0,.6)">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px">
+      <div>
+        <div style="font-size:22px;font-weight:900;color:#00C97A;letter-spacing:1px">AfriMoney Data Model</div>
+        <div style="font-size:12px;color:rgba(255,255,255,.5);margin-top:4px">Snowflake Medallion Architecture · Bronze → Silver → Gold</div>
+      </div>
+      <button onclick="document.getElementById('dmOverlay').remove()" style="background:rgba(255,255,255,.1);border:none;color:#fff;width:36px;height:36px;border-radius:50%;cursor:pointer;font-size:18px">✕</button>
+    </div>
+    ${['Bronze','Silver','Gold','ML'].map((layer,li) => {
+      const colors = ['#FF6B6B','#4ECDC4','#F5A623','#A569BD'];
+      const tables = [
+        [['dim_customer','500K rows · SCD2'],['dim_recipient','1M rows · Dimension'],['fact_remittance_transfer','5M rows · Fact'],['fact_wallet_ledger','10M rows · Double-entry'],['fact_card_transaction','3M rows · Fact'],['fact_loan_application','200K rows · Fact'],['fact_fx_rate','95K rows · Fact']],
+        [['stg_transfers','dbt view · Cleaned'],['int_transfer_profitability','5M rows · dbt table'],['int_customer_transfer_stats','500K rows · dbt table']],
+        [['mart_remittance','50K rows · Monthly KPIs'],['mart_customer_360','500K rows · LTV & Segment'],['mart_fx_profitability','200 rows · FX margin'],['mart_risk_compliance','12 rows · RAG KPIs'],['mart_loans_mukuru','1K rows · ECL & Repayment']],
+        [['FRAUD_FEATURES','200K rows · 15 features · Daily'],['CHURN_FEATURES','500K rows · 21 features · Weekly'],['CREDIT_FEATURES','15K rows · 7 features · At origination']]
+      ][li];
+      return `<div style="margin-bottom:20px">
+        <div style="font-size:13px;font-weight:800;color:${colors[li]};letter-spacing:1.5px;text-transform:uppercase;margin-bottom:10px;border-left:3px solid ${colors[li]};padding-left:10px">${layer} Layer</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px">
+          ${tables.map(([name,desc])=>`<div style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:10px 12px">
+            <div style="font-size:12px;font-weight:700;color:${colors[li]};font-family:monospace">${name}</div>
+            <div style="font-size:10px;color:rgba(255,255,255,.5);margin-top:3px">${desc}</div>
+          </div>`).join('')}
+        </div>
+      </div>`;
+    }).join('')}
+    <div style="margin-top:20px;padding-top:16px;border-top:1px solid rgba(255,255,255,.08);display:flex;gap:20px;flex-wrap:wrap">
+      <div style="font-size:11px;color:rgba(255,255,255,.4)">⚡ Snowflake · 4 Virtual Warehouses · RBAC · Internal Stages · Time Travel</div>
+      <div style="font-size:11px;color:rgba(255,255,255,.4)">🔧 dbt · 14 models · 28 tests · Snapshot SCD2</div>
+      <div style="font-size:11px;color:rgba(255,255,255,.4)">🤖 Snowpark ML · Model Registry · 3 Prod Models</div>
+    </div>
+  </div>`;
+  document.body.appendChild(overlay);
+}
+
+// ── TAB SWITCHING ─────────────────────────────────────────────
+function showTab(name, el) {
+  // toggle nav tabs
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  if (el) el.classList.add('active');
+  // show/hide views
+  document.getElementById('view-map').style.display       = name==='map'       ? 'flex' : 'none';
+  document.getElementById('view-dashboard').style.display = name==='dashboard'  ? 'flex' : 'none';
+  document.getElementById('view-corridors').style.display = name==='corridors'  ? 'flex' : 'none';
+  document.getElementById('view-ml').style.display        = name==='ml'         ? 'flex' : 'none';
+  document.getElementById('view-risk').style.display      = name==='risk'       ? 'flex' : 'none';
+  document.getElementById('view-fx').style.display        = name==='fx'         ? 'flex' : 'none';
+  document.getElementById('view-insights').style.display  = name==='insights'   ? 'flex' : 'none';
+  // rebuild corridors table on first open
+  if (name === 'corridors') buildCorrTable();
+  // invalidate leaflet map size when returning to map tab
+  if (name === 'map') setTimeout(() => map.invalidateSize(), 50);
+}
+
+// ── CORRIDORS TABLE ────────────────────────────────────────────
+const clusterLabel = {high_volume:'High-Volume Core',premium:'Premium',growth:'Growth Market',emerging:'Emerging'};
+const clusterColor = {high_volume:'#FF6B6B',premium:'#F5A623',growth:'#4ECDC4',emerging:'#00C97A'};
+const bizLabel     = {both:'MKR+MMY',mkr:'Mukuru',mmy:'Mama Money'};
+
+function buildCorrTable() {
+  const tbody = document.getElementById('corr-tbody');
+  if (!tbody || tbody.children.length) return; // already built
+  const rows = [...corridors].sort((a,b) => b.volume_m - a.volume_m);
+  rows.forEach((c,i) => {
+    const sr_col = c.success_rate >= 80 ? '#00C97A' : c.success_rate >= 70 ? '#F5A623' : '#FF6B6B';
+    const fr_col = c.fraud_bps    < 3   ? '#00C97A' : c.fraud_bps    < 6   ? '#F5A623' : '#FF6B6B';
+    const cl_col = clusterColor[c.cluster] || '#fff';
+    const bg     = i % 2 === 0 ? 'rgba(255,255,255,.02)' : 'transparent';
+    tbody.insertAdjacentHTML('beforeend', `
+      <tr style="background:${bg}">
+        <td style="font-weight:700;color:#fff">${c.id}</td>
+        <td>${c.name}</td>
+        <td style="color:${cl_col};font-weight:700">${clusterLabel[c.cluster]||c.cluster}</td>
+        <td>${bizLabel[c.business]||c.business}</td>
+        <td style="color:#00C97A;font-weight:700">R ${c.volume_m}B</td>
+        <td>${c.count.toLocaleString()}</td>
+        <td style="color:${sr_col};font-weight:700">${c.success_rate}%</td>
+        <td style="color:${fr_col};font-weight:700">${c.fraud_bps} bps</td>
+        <td>${c.fx_spread}%</td>
+        <td>R ${c.avg_send.toLocaleString()}</td>
+      </tr>`);
+  });
+}
+
+// ── INITIAL DRAW ─────────────────────────────────────────────
+updateMap();
+
+// ── PULSE ANIMATION ──────────────────────────────────────────
+let pulseR = 22, growing = true;
+setInterval(() => {
+  if (growing) { pulseR += 0.8; if (pulseR > 34) growing = false; }
+  else         { pulseR -= 0.8; if (pulseR < 22) growing = true;  }
+  pulse.setRadius(pulseR);
+  pulse.setStyle({ opacity: 0.5 - (pulseR - 22) / 24 });
+}, 50);
+
+</script>
+</body>
+</html>

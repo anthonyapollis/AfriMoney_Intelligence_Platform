@@ -1,0 +1,8 @@
+{
+  "fraud":  {"auc":0.9582,"ap":0.7745,"cv_mean":0.9576,"cv_std":0.0009,"label_rate":10.3,"n_train":160000,"n_test":40000,"threshold":0.40,
+              "fi":{"payment_attempts":0.312,"send_amount_log":0.241,"hour_of_day":0.138,"kyc_level":0.102,"fx_spread_pct":0.087,"is_weekend":0.054,"corridor_idx":0.041,"customer_tx_count":0.025}},
+  "churn":  {"auc":0.9905,"ap":0.9192,"cv_mean":0.9907,"cv_std":0.0003,"label_rate":10.9,"n_train":160000,"n_test":40000,"threshold":0.50,
+              "fi":{"days_since_last":0.421,"monthly_tx_rate":0.198,"engagement_score":0.142,"total_transfers":0.098,"wallet_balance":0.071,"kyc_level":0.038,"distinct_corridors":0.022,"card_transactions":0.010}},
+  "credit": {"auc":0.9475,"ap":0.9174,"cv_mean":0.9486,"cv_std":0.0025,"label_rate":37.4,"n_train":12000,"n_test":3000,"threshold":0.50,
+              "fi":{"dti_ratio":0.358,"prev_dpd":0.281,"employment_months":0.142,"income_log":0.098,"loan_count":0.071,"principal_log":0.033,"kyc_level":0.017}}
+}
