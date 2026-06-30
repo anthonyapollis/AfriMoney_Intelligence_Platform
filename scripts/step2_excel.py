@@ -116,7 +116,7 @@ kpis = [
     ("Transfer Orders",   "5M+",    GO),
     ("Active Corridors",  "17",     SK),
     ("Customers",         "500K",   "A569BD"),
-    ("Success Rate",      "78.2%",  G),
+    ("Success Rate",      "77.6%",  G),
     ("Fraud Rate",        "3.2 bps",CO),
     ("KYC Completion",    "82%",    GO),
     ("Net Revenue",       "R 18B",  SK),
@@ -667,7 +667,7 @@ about=[
     ("Date",str(datetime.date.today())),
     ("Tech Stack","Snowflake · dbt · Snowpark ML · Python · Power BI"),
     ("Architecture","Bronze → Silver → Gold (Medallion)"),
-    ("Data Volume","40M+ rows across 20 table types"),
+    ("Data Volume","30M+ rows across 9 Bronze + Silver + Gold layers"),
     ("ML Models","Fraud Detection (AUC "+str(ml["fraud"]["auc"])+") · Churn ("+str(ml["churn"]["auc"])+") · Credit PD ("+str(ml["credit"]["auc"])+")"),
     ("dbt Models","14 models · 28 tests passing"),
     ("Corridors","17 active SA-Africa remittance corridors"),
@@ -689,3 +689,4 @@ wb.save(out)
 print(f"[SAVED] {out}")
 print(f"  Sheets: {len(wb.sheetnames)}")
 print(f"  Sheets: {', '.join(wb.sheetnames)}")
+
