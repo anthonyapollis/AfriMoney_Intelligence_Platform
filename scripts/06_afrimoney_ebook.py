@@ -1142,7 +1142,7 @@ HTML = f"""<!DOCTYPE html>
 
 <div class="footer">
   <p><strong>AfriMoney Intelligence Platform</strong> — Snowflake + dbt + Snowpark ML Technical Reference</p>
-  <p style="margin-top:8px">By: <strong>Anthony Apollis</strong> &nbsp;|&nbsp; {TODAY} &nbsp;|&nbsp; Portfolio Project — Data Engineering</p>
+  <p style="margin-top:8px">By: <strong>Anthony Apollis</strong> &nbsp;|&nbsp; {TODAY} &nbsp;|&nbsp; Completed Project — Data Engineering</p>
   <p style="margin-top:8px">Mukuru + Mama Money Unified Model &nbsp;|&nbsp; 40M+ Rows &nbsp;|&nbsp; Bronze→Silver→Gold &nbsp;|&nbsp; 3 ML Models</p>
   <p style="margin-top:14px;font-size:10px;color:rgba(255,255,255,0.45)">
     Synthetic data only. No real customer data or proprietary business information used. Mukuru and Mama Money are referenced for educational and portfolio demonstration purposes only.
