@@ -5,8 +5,10 @@ illustrated UI screenshots, step-by-step explanations.
 """
 from pathlib import Path
 import datetime
+import json
+import re
 
-BASE  = Path(r"C:\Users\Anthony.DESKTOP-ES5HL78\Documents\Fintech_Intelligence_Platform")
+BASE  = Path(__file__).resolve().parent.parent
 EBOOK = BASE / "ebook"
 TODAY = datetime.date.today().isoformat()
 
@@ -266,6 +268,42 @@ tr:nth-child(even) td { background:var(--grey-lt); }
 }
 .footer strong { color:var(--gold); }
 @media print { body{background:white;} .chapter{box-shadow:none;} }
+
+/* -- similar-corridors recommender -- */
+.corrbox { background:var(--grey-lt); border-radius:10px; padding:20px 22px; margin:18px 0; }
+.corrcols { display:grid; grid-template-columns:1fr 1fr; gap:18px; margin-top:14px; }
+@media(max-width:760px){ .corrcols{ grid-template-columns:1fr; } }
+.corrcols select { width:100%; padding:9px; border-radius:6px; border:1px solid var(--grey-md); font-size:.85rem; margin-bottom:12px; }
+.corrlist { list-style:none; font-size:.83rem; }
+.corrlist li { padding:8px 10px; background:#fff; border-radius:6px; margin-bottom:7px; display:flex; justify-content:space-between; gap:10px; border:1px solid var(--grey-md); }
+.corrlist li b { color:var(--coral); }
+.corrcols h4 { font-size:.72rem; text-transform:uppercase; letter-spacing:1px; color:var(--text-lt); margin-bottom:8px; }
+
+/* -- Q&A assistant widget -- */
+#qa-toggle {
+  position:fixed; bottom:22px; right:22px; z-index:200; background:var(--navy); color:#fff;
+  border:none; border-radius:30px; padding:13px 20px; font-size:13px; font-weight:700;
+  box-shadow:0 6px 20px rgba(27,79,114,.4); cursor:pointer; display:flex; align-items:center; gap:8px;
+}
+#qa-toggle:hover { background:var(--green); }
+#qa-panel {
+  position:fixed; bottom:78px; right:22px; z-index:200; width:360px; max-width:92vw; max-height:70vh;
+  background:#fff; border-radius:12px; box-shadow:0 12px 40px rgba(0,0,0,.3);
+  display:none; flex-direction:column; overflow:hidden; border:1px solid var(--grey-md);
+}
+#qa-panel.open { display:flex; }
+#qa-head { background:var(--navy); color:#fff; padding:13px 16px; font-size:13px; font-weight:700; display:flex; justify-content:space-between; align-items:center; }
+#qa-head button { background:none; border:none; color:#fff; font-size:16px; cursor:pointer; opacity:.7; }
+#qa-log { flex:1; overflow-y:auto; padding:14px; font-size:12.5px; display:flex; flex-direction:column; gap:8px; }
+#qa-log .bubble { padding:9px 12px; border-radius:10px; max-width:88%; line-height:1.5; }
+#qa-log .bot { background:var(--grey-lt); align-self:flex-start; color:var(--text); }
+#qa-log .user { background:var(--navy); color:#fff; align-self:flex-end; }
+#qa-chips { display:flex; gap:6px; flex-wrap:wrap; padding:0 14px 10px; }
+#qa-chips button { font-size:10.5px; background:var(--grey-lt); border:1px solid var(--grey-md); border-radius:14px; padding:5px 10px; cursor:pointer; color:var(--text); }
+#qa-chips button:hover { border-color:var(--green); }
+#qa-input-row { display:flex; border-top:1px solid var(--grey-md); }
+#qa-input { flex:1; border:none; padding:11px 12px; font-size:12.5px; outline:none; }
+#qa-send { background:var(--green); color:#fff; border:none; padding:0 16px; font-weight:700; cursor:pointer; font-size:12px; }
 """
 
 # ── SVG DIAGRAMS ──────────────────────────────────────────────
@@ -584,6 +622,140 @@ DBT_TERMINAL_HTML = """
   <div style="color:#29B5E8">Done. PASS=14 WARN=0 ERROR=0 SKIP=0 TOTAL=14</div>
 </div>
 """
+
+# ---- corridor similarity data (see scripts/07_corridor_similarity.py) ----
+with open(BASE / "ml_models" / "corridor_similarity.json") as _f:
+    corr_data = json.load(_f)
+corr_count = corr_data["metrics"]["corridors"]
+corr_same_cluster_pct = corr_data["metrics"]["diagnostic_nearest_neighbour_same_cluster_pct"]
+corr_options = "\n".join(
+    f'<option value="{i}">{c["name"]} ({c["id"]}) - R{c["volume_m"]}m/yr</option>'
+    for i, c in enumerate(corr_data["corridors"])
+)
+
+# ---- FAQ for the Q&A widget, grounded in real project facts ----
+faq = [
+    {"q": "What is AfriMoney Intelligence Platform?",
+     "kw": ["what is afrimoney", "about this project", "what company", "about afrimoney"],
+     "a": "A unified Snowflake data warehouse and analytics platform modelling two fictional-composite "
+          "cross-border remittance businesses (inspired by Mukuru and Mama Money) across 17 SA-Africa "
+          "corridors - Bronze/Silver/Gold medallion architecture, dbt transformations, and Snowpark ML for "
+          "fraud, churn and credit scoring. Synthetic data only, portfolio project, not real customer data."},
+    {"q": "How much data is in this?",
+     "kw": ["how much data", "how many rows", "scale", "size of the data"],
+     "a": "40M+ synthetic rows across 9 table types, ~500K customers, R78B modelled annual volume, 5M+ "
+          "transfers across 17 corridors. Generated and processed in Snowflake, then torn down - the "
+          "ebook, map and Excel dashboard are the lasting artifacts."},
+    {"q": "What are the ML models?",
+     "kw": ["ml model", "machine learning", "fraud", "churn", "credit"],
+     "a": "Three Snowpark ML models: Fraud detection (AUC 0.958), Churn prediction (AUC 0.991), and Credit "
+          "PD scoring (AUC 0.948) - GradientBoosting and RandomForest, registered in the Snowflake Model "
+          "Registry and deployed as callable SQL UDFs (see Chapter 6.5)."},
+    {"q": "What's the similar-corridors tool?",
+     "kw": ["similar-corridors", "similar corridor", "corridor recommender", "corridor similarity", "risk triage"],
+     "a": f"Content-based nearest-neighbour similarity (cosine) over real per-corridor KPIs - volume, "
+          f"success rate, FX spread, fraud bps, average send, Mukuru/Mama Money split - across all "
+          f"{corr_count} corridors. Not collaborative filtering; there's no local per-customer history to "
+          f"learn from once the Snowflake data is torn down. Built for risk triage: if one corridor's fraud "
+          f"rate moves, which similarly-profiled corridors are worth a second look. Each corridor's nearest "
+          f"neighbour shares its volume-tier cluster {corr_same_cluster_pct}% of the time - a diagnostic, "
+          "not a validated accuracy claim, since 17 corridors is too few to hold anything out."},
+    {"q": "What's the biggest corridor?",
+     "kw": ["biggest corridor", "largest corridor", "top corridor"],
+     "a": "ZA-ZW (South Africa to Zimbabwe) - the largest corridor by volume, high frequency, cash-payout "
+          "dominant."},
+    {"q": "Is the data real?",
+     "kw": ["is the data real", "real data", "is this real", "synthetic", "fictional"],
+     "a": "No - every customer, transfer and corridor figure is synthetic, generated for this portfolio "
+          "project. Mukuru and Mama Money are referenced for educational/demonstration purposes only, not "
+          "using any real proprietary business data."},
+    {"q": "What's the tech stack?",
+     "kw": ["tech stack", "technology", "what's it built with", "stack"],
+     "a": "Snowflake (4 virtual warehouses, RBAC, internal stages), dbt (14 models, 28 tests), Snowpark ML "
+          "(GradientBoosting + RandomForest with Model Registry + UDFs), Python for synthetic data "
+          "generation, and Leaflet.js for the interactive corridor map."},
+    {"q": "Who built this?",
+     "kw": ["who built", "who made", "author", "anthony"],
+     "a": "Anthony Apollis, as a portfolio project demonstrating Snowflake/dbt/ML engineering for fintech "
+          "data platforms - not a real Mukuru or Mama Money system."},
+]
+faq_json = json.dumps(faq)
+corr_json = json.dumps(corr_data["corridors"])
+
+extra_widgets = (
+    '<button id="qa-toggle">\U0001F4AC Ask about this platform</button>\n'
+    '<div id="qa-panel">\n'
+    '  <div id="qa-head"><span>Ask about AfriMoney</span><button id="qa-close">&times;</button></div>\n'
+    '  <div id="qa-log"><div class="bubble bot">Hi! Ask me about the corridors, the ML models, the tech '
+    'stack, or the similar-corridors tool.</div></div>\n'
+    '  <div id="qa-chips">\n'
+    '    <button>What is AfriMoney Intelligence Platform?</button>\n'
+    '    <button>How much data is in this?</button>\n'
+    '    <button>What are the ML models?</button>\n'
+    '    <button>Is the data real?</button>\n'
+    '  </div>\n'
+    '  <div id="qa-input-row">\n'
+    '    <input id="qa-input" type="text" placeholder="Ask a question...">\n'
+    '    <button id="qa-send">Send</button>\n'
+    '  </div>\n'
+    '</div>\n'
+    '<script>\n'
+    'var CORRIDORS = ' + corr_json + ';\n'
+    'var FAQ = ' + faq_json + ';\n'
+    'document.addEventListener("DOMContentLoaded", function () {\n'
+    '  var sel = document.getElementById("corr-select");\n'
+    '  var resultsEl = document.getElementById("corr-results");\n'
+    '  function renderCorr(i) {\n'
+    '    var item = CORRIDORS[i];\n'
+    '    if (!item) return;\n'
+    '    resultsEl.innerHTML = item.similar.length\n'
+    '      ? item.similar.map(function (s) {\n'
+    '          return "<li><span>" + s.name + " (" + s.id + ")</span><b>" + s.fraud_bps + " bps fraud</b></li>";\n'
+    '        }).join("")\n'
+    '      : "<li>No close match found</li>";\n'
+    '  }\n'
+    '  if (sel) { sel.addEventListener("change", function () { renderCorr(this.value); }); renderCorr(0); }\n'
+    '\n'
+    '  var toggle = document.getElementById("qa-toggle");\n'
+    '  var panel = document.getElementById("qa-panel");\n'
+    '  var log = document.getElementById("qa-log");\n'
+    '  var input = document.getElementById("qa-input");\n'
+    '  var send = document.getElementById("qa-send");\n'
+    '  function addBubble(text, who) {\n'
+    '    var b = document.createElement("div");\n'
+    '    b.className = "bubble " + who;\n'
+    '    b.textContent = text;\n'
+    '    log.appendChild(b);\n'
+    '    log.scrollTop = log.scrollHeight;\n'
+    '  }\n'
+    '  function answer(q) {\n'
+    '    var ql = q.toLowerCase();\n'
+    '    var best = null, bestScore = 0;\n'
+    '    FAQ.forEach(function (item) {\n'
+    '      var score = 0;\n'
+    '      item.kw.forEach(function (k) { if (ql.indexOf(k) !== -1) score += k.length; });\n'
+    '      if (score > bestScore) { bestScore = score; best = item; }\n'
+    '    });\n'
+    '    return best ? best.a : "I don\'t have a grounded answer for that yet - try asking about the corridors, the ML models, the tech stack, or the similar-corridors tool.";\n'
+    '  }\n'
+    '  function ask(q) {\n'
+    '    if (!q.trim()) return;\n'
+    '    addBubble(q, "user");\n'
+    '    input.value = "";\n'
+    '    setTimeout(function () { addBubble(answer(q), "bot"); }, 200);\n'
+    '  }\n'
+    '  if (toggle) {\n'
+    '    toggle.addEventListener("click", function () { panel.classList.toggle("open"); });\n'
+    '    document.getElementById("qa-close").addEventListener("click", function () { panel.classList.remove("open"); });\n'
+    '    send.addEventListener("click", function () { ask(input.value); });\n'
+    '    input.addEventListener("keydown", function (e) { if (e.key === "Enter") ask(input.value); });\n'
+    '    document.querySelectorAll("#qa-chips button").forEach(function (btn) {\n'
+    '      btn.addEventListener("click", function () { ask(btn.textContent); });\n'
+    '    });\n'
+    '  }\n'
+    '});\n'
+    '</script>\n'
+)
 
 HTML = f"""<!DOCTYPE html>
 <html lang="en">
@@ -1024,6 +1196,30 @@ HTML = f"""<!DOCTYPE html>
 <span class="kw">ORDER BY</span> fraud_score <span class="kw">DESC</span>;</div>
 </div>
 
+  <h2>6.6 Similar Corridors — Content-Based Risk Triage</h2>
+  <p>The 40M+ row transaction dataset lived in Snowflake and was torn down after the build (see Chapter 9
+  cost discipline) — no per-customer transaction history survives locally to power a "customers who send
+  like X also send like Y" collaborative-filter recommender. What does survive is real per-corridor data:
+  volume, success rate, FX spread, fraud basis points, average send size and Mukuru/Mama Money split for
+  all {corr_count} corridors. That's a legitimate basis for a different, honest tool: nearest-neighbour
+  corridor similarity, useful for risk triage — if one corridor's fraud rate moves, which corridors have a
+  similar profile and are worth a second look too. As a sanity diagnostic (not a validated accuracy claim —
+  17 corridors is too few to hold anything out): each corridor's nearest neighbour shares its volume-tier
+  cluster {corr_same_cluster_pct}% of the time.</p>
+  <div class="corrbox">
+    <div class="corrcols">
+      <div>
+        <h4>Look up a corridor</h4>
+        <select id="corr-select">{corr_options}</select>
+      </div>
+      <div>
+        <h4>Similar corridors</h4>
+        <ul class="corrlist" id="corr-results"></ul>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- ══ CH 7 ══ -->
 <div class="chapter">
   <div class="ch-header sky">
@@ -1149,6 +1345,7 @@ HTML = f"""<!DOCTYPE html>
   </p>
 </div>
 
+{extra_widgets}
 </body>
 </html>"""
 

@@ -1,0 +1,545 @@
+{
+  "metrics": {
+    "model": "Content-based nearest-neighbour similarity (cosine) over real corridor KPIs",
+    "corridors": 17,
+    "features": [
+      "volume_m",
+      "success_rate",
+      "fx_spread",
+      "fraud_bps",
+      "avg_send",
+      "mkr_pct"
+    ],
+    "diagnostic_nearest_neighbour_same_cluster_pct": 94.1,
+    "note": "17 corridors is too few for a held-out accuracy claim - this is a similarity tool for risk/ops triage (\"which corridors look like this one\"), not a validated prediction."
+  },
+  "corridors": [
+    {
+      "id": "ZA-ZW",
+      "name": "Zimbabwe",
+      "city": "Harare",
+      "volume_m": 18.4,
+      "fraud_bps": 3.2,
+      "success_rate": 78.2,
+      "similar": [
+        {
+          "id": "ZA-MZ",
+          "name": "Mozambique",
+          "similarity": 0.963,
+          "fraud_bps": 2.8,
+          "volume_m": 12.1
+        },
+        {
+          "id": "ZA-ZM",
+          "name": "Zambia",
+          "similarity": 0.656,
+          "fraud_bps": 2.1,
+          "volume_m": 8.7
+        },
+        {
+          "id": "ZA-MW",
+          "name": "Malawi",
+          "similarity": 0.281,
+          "fraud_bps": 3.5,
+          "volume_m": 6.2
+        }
+      ]
+    },
+    {
+      "id": "ZA-MZ",
+      "name": "Mozambique",
+      "city": "Maputo",
+      "volume_m": 12.1,
+      "fraud_bps": 2.8,
+      "success_rate": 76.8,
+      "similar": [
+        {
+          "id": "ZA-ZW",
+          "name": "Zimbabwe",
+          "similarity": 0.963,
+          "fraud_bps": 3.2,
+          "volume_m": 18.4
+        },
+        {
+          "id": "ZA-ZM",
+          "name": "Zambia",
+          "similarity": 0.747,
+          "fraud_bps": 2.1,
+          "volume_m": 8.7
+        },
+        {
+          "id": "ZA-MW",
+          "name": "Malawi",
+          "similarity": 0.451,
+          "fraud_bps": 3.5,
+          "volume_m": 6.2
+        }
+      ]
+    },
+    {
+      "id": "ZA-ZM",
+      "name": "Zambia",
+      "city": "Lusaka",
+      "volume_m": 8.7,
+      "fraud_bps": 2.1,
+      "success_rate": 79.4,
+      "similar": [
+        {
+          "id": "ZA-MZ",
+          "name": "Mozambique",
+          "similarity": 0.747,
+          "fraud_bps": 2.8,
+          "volume_m": 12.1
+        },
+        {
+          "id": "ZA-ZW",
+          "name": "Zimbabwe",
+          "similarity": 0.656,
+          "fraud_bps": 3.2,
+          "volume_m": 18.4
+        },
+        {
+          "id": "ZA-MW",
+          "name": "Malawi",
+          "similarity": 0.574,
+          "fraud_bps": 3.5,
+          "volume_m": 6.2
+        }
+      ]
+    },
+    {
+      "id": "ZA-MW",
+      "name": "Malawi",
+      "city": "Blantyre",
+      "volume_m": 6.2,
+      "fraud_bps": 3.5,
+      "success_rate": 77.1,
+      "similar": [
+        {
+          "id": "ZA-ZM",
+          "name": "Zambia",
+          "similarity": 0.574,
+          "fraud_bps": 2.1,
+          "volume_m": 8.7
+        },
+        {
+          "id": "ZA-MZ",
+          "name": "Mozambique",
+          "similarity": 0.451,
+          "fraud_bps": 2.8,
+          "volume_m": 12.1
+        },
+        {
+          "id": "ZA-MG",
+          "name": "Madagascar",
+          "similarity": 0.406,
+          "fraud_bps": 5.2,
+          "volume_m": 1.8
+        }
+      ]
+    },
+    {
+      "id": "ZA-LS",
+      "name": "Lesotho",
+      "city": "Maseru",
+      "volume_m": 4.8,
+      "fraud_bps": 1.8,
+      "success_rate": 82.3,
+      "similar": [
+        {
+          "id": "ZA-BW",
+          "name": "Botswana",
+          "similarity": 0.968,
+          "fraud_bps": 2.0,
+          "volume_m": 5.4
+        },
+        {
+          "id": "ZA-MU",
+          "name": "Mauritius",
+          "similarity": 0.935,
+          "fraud_bps": 0.9,
+          "volume_m": 2.2
+        },
+        {
+          "id": "ZA-NA",
+          "name": "Namibia",
+          "similarity": 0.886,
+          "fraud_bps": 1.9,
+          "volume_m": 3.9
+        }
+      ]
+    },
+    {
+      "id": "ZA-SZ",
+      "name": "Eswatini",
+      "city": "Mbabane",
+      "volume_m": 3.1,
+      "fraud_bps": 1.4,
+      "success_rate": 84.1,
+      "similar": [
+        {
+          "id": "ZA-MU",
+          "name": "Mauritius",
+          "similarity": 0.94,
+          "fraud_bps": 0.9,
+          "volume_m": 2.2
+        },
+        {
+          "id": "ZA-LS",
+          "name": "Lesotho",
+          "similarity": 0.879,
+          "fraud_bps": 1.8,
+          "volume_m": 4.8
+        },
+        {
+          "id": "ZA-BW",
+          "name": "Botswana",
+          "similarity": 0.873,
+          "fraud_bps": 2.0,
+          "volume_m": 5.4
+        }
+      ]
+    },
+    {
+      "id": "ZA-BW",
+      "name": "Botswana",
+      "city": "Gaborone",
+      "volume_m": 5.4,
+      "fraud_bps": 2.0,
+      "success_rate": 81.7,
+      "similar": [
+        {
+          "id": "ZA-LS",
+          "name": "Lesotho",
+          "similarity": 0.968,
+          "fraud_bps": 1.8,
+          "volume_m": 4.8
+        },
+        {
+          "id": "ZA-MU",
+          "name": "Mauritius",
+          "similarity": 0.959,
+          "fraud_bps": 0.9,
+          "volume_m": 2.2
+        },
+        {
+          "id": "ZA-SZ",
+          "name": "Eswatini",
+          "similarity": 0.873,
+          "fraud_bps": 1.4,
+          "volume_m": 3.1
+        }
+      ]
+    },
+    {
+      "id": "ZA-NA",
+      "name": "Namibia",
+      "city": "Windhoek",
+      "volume_m": 3.9,
+      "fraud_bps": 1.9,
+      "success_rate": 80.5,
+      "similar": [
+        {
+          "id": "ZA-LS",
+          "name": "Lesotho",
+          "similarity": 0.886,
+          "fraud_bps": 1.8,
+          "volume_m": 4.8
+        },
+        {
+          "id": "ZA-BW",
+          "name": "Botswana",
+          "similarity": 0.827,
+          "fraud_bps": 2.0,
+          "volume_m": 5.4
+        },
+        {
+          "id": "ZA-MU",
+          "name": "Mauritius",
+          "similarity": 0.727,
+          "fraud_bps": 0.9,
+          "volume_m": 2.2
+        }
+      ]
+    },
+    {
+      "id": "ZA-TZ",
+      "name": "Tanzania",
+      "city": "Dar es Salaam",
+      "volume_m": 4.1,
+      "fraud_bps": 4.1,
+      "success_rate": 74.3,
+      "similar": [
+        {
+          "id": "ZA-GH",
+          "name": "Ghana",
+          "similarity": 0.956,
+          "fraud_bps": 4.6,
+          "volume_m": 2.9
+        },
+        {
+          "id": "ZA-ET",
+          "name": "Ethiopia",
+          "similarity": 0.74,
+          "fraud_bps": 7.1,
+          "volume_m": 0.9
+        },
+        {
+          "id": "ZA-MG",
+          "name": "Madagascar",
+          "similarity": 0.714,
+          "fraud_bps": 5.2,
+          "volume_m": 1.8
+        }
+      ]
+    },
+    {
+      "id": "ZA-KE",
+      "name": "Kenya",
+      "city": "Nairobi",
+      "volume_m": 3.6,
+      "fraud_bps": 3.8,
+      "success_rate": 75.6,
+      "similar": [
+        {
+          "id": "ZA-NG",
+          "name": "Nigeria",
+          "similarity": 0.762,
+          "fraud_bps": 6.1,
+          "volume_m": 3.4
+        },
+        {
+          "id": "ZA-GH",
+          "name": "Ghana",
+          "similarity": 0.627,
+          "fraud_bps": 4.6,
+          "volume_m": 2.9
+        },
+        {
+          "id": "ZA-TZ",
+          "name": "Tanzania",
+          "similarity": 0.554,
+          "fraud_bps": 4.1,
+          "volume_m": 4.1
+        }
+      ]
+    },
+    {
+      "id": "ZA-MG",
+      "name": "Madagascar",
+      "city": "Antananarivo",
+      "volume_m": 1.8,
+      "fraud_bps": 5.2,
+      "success_rate": 71.2,
+      "similar": [
+        {
+          "id": "ZA-AO",
+          "name": "Angola",
+          "similarity": 0.962,
+          "fraud_bps": 6.8,
+          "volume_m": 1.4
+        },
+        {
+          "id": "ZA-ET",
+          "name": "Ethiopia",
+          "similarity": 0.961,
+          "fraud_bps": 7.1,
+          "volume_m": 0.9
+        },
+        {
+          "id": "ZA-CD",
+          "name": "DR Congo",
+          "similarity": 0.923,
+          "fraud_bps": 8.2,
+          "volume_m": 1.1
+        }
+      ]
+    },
+    {
+      "id": "ZA-MU",
+      "name": "Mauritius",
+      "city": "Port Louis",
+      "volume_m": 2.2,
+      "fraud_bps": 0.9,
+      "success_rate": 87.4,
+      "similar": [
+        {
+          "id": "ZA-BW",
+          "name": "Botswana",
+          "similarity": 0.959,
+          "fraud_bps": 2.0,
+          "volume_m": 5.4
+        },
+        {
+          "id": "ZA-SZ",
+          "name": "Eswatini",
+          "similarity": 0.94,
+          "fraud_bps": 1.4,
+          "volume_m": 3.1
+        },
+        {
+          "id": "ZA-LS",
+          "name": "Lesotho",
+          "similarity": 0.935,
+          "fraud_bps": 1.8,
+          "volume_m": 4.8
+        }
+      ]
+    },
+    {
+      "id": "ZA-GH",
+      "name": "Ghana",
+      "city": "Accra",
+      "volume_m": 2.9,
+      "fraud_bps": 4.6,
+      "success_rate": 73.1,
+      "similar": [
+        {
+          "id": "ZA-TZ",
+          "name": "Tanzania",
+          "similarity": 0.956,
+          "fraud_bps": 4.1,
+          "volume_m": 4.1
+        },
+        {
+          "id": "ZA-NG",
+          "name": "Nigeria",
+          "similarity": 0.808,
+          "fraud_bps": 6.1,
+          "volume_m": 3.4
+        },
+        {
+          "id": "ZA-ET",
+          "name": "Ethiopia",
+          "similarity": 0.752,
+          "fraud_bps": 7.1,
+          "volume_m": 0.9
+        }
+      ]
+    },
+    {
+      "id": "ZA-NG",
+      "name": "Nigeria",
+      "city": "Lagos",
+      "volume_m": 3.4,
+      "fraud_bps": 6.1,
+      "success_rate": 69.8,
+      "similar": [
+        {
+          "id": "ZA-GH",
+          "name": "Ghana",
+          "similarity": 0.808,
+          "fraud_bps": 4.6,
+          "volume_m": 2.9
+        },
+        {
+          "id": "ZA-KE",
+          "name": "Kenya",
+          "similarity": 0.762,
+          "fraud_bps": 3.8,
+          "volume_m": 3.6
+        },
+        {
+          "id": "ZA-TZ",
+          "name": "Tanzania",
+          "similarity": 0.678,
+          "fraud_bps": 4.1,
+          "volume_m": 4.1
+        }
+      ]
+    },
+    {
+      "id": "ZA-AO",
+      "name": "Angola",
+      "city": "Luanda",
+      "volume_m": 1.4,
+      "fraud_bps": 6.8,
+      "success_rate": 68.4,
+      "similar": [
+        {
+          "id": "ZA-ET",
+          "name": "Ethiopia",
+          "similarity": 0.993,
+          "fraud_bps": 7.1,
+          "volume_m": 0.9
+        },
+        {
+          "id": "ZA-CD",
+          "name": "DR Congo",
+          "similarity": 0.99,
+          "fraud_bps": 8.2,
+          "volume_m": 1.1
+        },
+        {
+          "id": "ZA-MG",
+          "name": "Madagascar",
+          "similarity": 0.962,
+          "fraud_bps": 5.2,
+          "volume_m": 1.8
+        }
+      ]
+    },
+    {
+      "id": "ZA-CD",
+      "name": "DR Congo",
+      "city": "Kinshasa",
+      "volume_m": 1.1,
+      "fraud_bps": 8.2,
+      "success_rate": 64.2,
+      "similar": [
+        {
+          "id": "ZA-AO",
+          "name": "Angola",
+          "similarity": 0.99,
+          "fraud_bps": 6.8,
+          "volume_m": 1.4
+        },
+        {
+          "id": "ZA-ET",
+          "name": "Ethiopia",
+          "similarity": 0.989,
+          "fraud_bps": 7.1,
+          "volume_m": 0.9
+        },
+        {
+          "id": "ZA-MG",
+          "name": "Madagascar",
+          "similarity": 0.923,
+          "fraud_bps": 5.2,
+          "volume_m": 1.8
+        }
+      ]
+    },
+    {
+      "id": "ZA-ET",
+      "name": "Ethiopia",
+      "city": "Addis Ababa",
+      "volume_m": 0.9,
+      "fraud_bps": 7.1,
+      "success_rate": 66.8,
+      "similar": [
+        {
+          "id": "ZA-AO",
+          "name": "Angola",
+          "similarity": 0.993,
+          "fraud_bps": 6.8,
+          "volume_m": 1.4
+        },
+        {
+          "id": "ZA-CD",
+          "name": "DR Congo",
+          "similarity": 0.989,
+          "fraud_bps": 8.2,
+          "volume_m": 1.1
+        },
+        {
+          "id": "ZA-MG",
+          "name": "Madagascar",
+          "similarity": 0.961,
+          "fraud_bps": 5.2,
+          "volume_m": 1.8
+        }
+      ]
+    }
+  ]
+}
