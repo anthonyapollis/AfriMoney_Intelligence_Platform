@@ -278,7 +278,7 @@ HTML = f"""<!DOCTYPE html>
     <div class="stat-box"><div class="stat-num">Bronze→Gold</div><div class="stat-lbl">Medallion Architecture</div></div>
   </div>
   <div class="cover-meta">
-    Prepared by: Anthony Apollis &nbsp;|&nbsp; {TODAY} &nbsp;|&nbsp; Portfolio Project — Data Engineering &amp; ML
+    Prepared by: Anthony Apollis &nbsp;|&nbsp; {TODAY} &nbsp;|&nbsp; Completed Project — Data Engineering &amp; ML
   </div>
 </div>
 
@@ -903,7 +903,7 @@ Alternative paths:
 <!-- ══ FOOTER ════════════════════════════════════════════════════════════ -->
 <div class="footer">
   <p><strong>African Fintech Intelligence Platform</strong> — Technical Ebook &amp; Data Architecture Guide</p>
-  <p style="margin-top:8px">Prepared by: <strong>Anthony Apollis</strong> &nbsp;|&nbsp; {TODAY} &nbsp;|&nbsp; Portfolio Project</p>
+  <p style="margin-top:8px">Prepared by: <strong>Anthony Apollis</strong> &nbsp;|&nbsp; {TODAY} &nbsp;|&nbsp; Completed Project</p>
   <p style="margin-top:8px">Mukuru + Mama Money Unified Data Model &nbsp;|&nbsp; 40M+ rows &nbsp;|&nbsp; 5 ML models &nbsp;|&nbsp; Bronze → Silver → Gold</p>
   <p style="margin-top:12px;font-size:10px;color:#546E7A">
     This document is a portfolio demonstration using synthetic data. All figures, customer data, and business metrics are fictitious and generated for educational purposes. No confidential business information from Mukuru or Mama Money is used or reproduced.

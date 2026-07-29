@@ -5,6 +5,7 @@ config-version: 2
 profile: 'afrimoney_snowflake'
 
 model-paths: ["models"]
+snapshot-paths: ["snapshots"]
 test-paths: ["tests"]
 macro-paths: ["macros"]
 seed-paths: ["seeds"]
