@@ -1,0 +1,821 @@
+{
+  "prefix": "afrimoney-corridor-intelligence",
+  "theme": "afrimoney",
+  "mark": "AM",
+  "shortName": "AfriMoney",
+  "sector": "Cross-border fintech",
+  "asOf": "African corridor portfolio",
+  "snapshot": "5.0M transfers",
+  "footer": "Source: AfriMoney Intelligence Platform public portfolio case study · synthetic fintech data · Snowflake + dbt + Snowpark ML · settlement rules retain full provenance",
+  "hero": "/extensions/afrimoney-corridor-intelligence/assets/afrimoney-hero.png",
+  "filters": [
+    "Corridor",
+    "Channel",
+    "Risk tier"
+  ],
+  "sheetMap": {
+    "exec": "afrimoney-corridor-intelligence-sheet-exec",
+    "corridors": "afrimoney-corridor-intelligence-sheet-corridors",
+    "fx": "afrimoney-corridor-intelligence-sheet-fx",
+    "channels": "afrimoney-corridor-intelligence-sheet-channels",
+    "risk": "afrimoney-corridor-intelligence-sheet-risk",
+    "trust": "afrimoney-corridor-intelligence-sheet-trust"
+  },
+  "pages": [
+    {
+      "id": "exec",
+      "nav": "Command Centre",
+      "eyebrow": "01 · MONEY IN MOTION",
+      "title": "Remittance Command Centre",
+      "subtitle": "See transfer scale, settlement, value at risk and ML control in one corridor-aware view.",
+      "kpis": [
+        {
+          "icon": "route",
+          "label": "TRANSFERS",
+          "value": "5.0M",
+          "note": "Across 17 corridors",
+          "tone": "a"
+        },
+        {
+          "icon": "wallet",
+          "label": "VALUE SENT",
+          "value": "R10.33B",
+          "note": "Synthetic transfer value",
+          "tone": "b"
+        },
+        {
+          "icon": "shield",
+          "label": "SETTLED",
+          "value": "78.0%",
+          "note": "3.90M completed",
+          "tone": "c"
+        },
+        {
+          "icon": "alert",
+          "label": "VALUE AT RISK",
+          "value": "R2.06B",
+          "note": "Unsettled sender funds",
+          "tone": "d"
+        }
+      ],
+      "cards": [
+        {
+          "title": "Transfer volume by corridor",
+          "subtitle": "Largest active routes in the reconciled fact",
+          "type": "bars",
+          "span": 7,
+          "rows": [
+            {
+              "label": "ZA → Kenya",
+              "value": 463166,
+              "display": "463k"
+            },
+            {
+              "label": "ZA → Malawi",
+              "value": 462591,
+              "display": "463k"
+            },
+            {
+              "label": "ZA → Mozambique",
+              "value": 462086,
+              "display": "462k"
+            },
+            {
+              "label": "ZA → Zambia",
+              "value": 462166,
+              "display": "462k"
+            },
+            {
+              "label": "ZA → Zimbabwe",
+              "value": 461720,
+              "display": "462k"
+            },
+            {
+              "label": "ZA → Tanzania",
+              "value": 461659,
+              "display": "462k"
+            }
+          ]
+        },
+        {
+          "title": "Settlement disposition",
+          "subtitle": "Terminal status remains explicit",
+          "type": "donut",
+          "span": 5,
+          "center": "78.0%",
+          "centerLabel": "completed",
+          "rows": [
+            {
+              "label": "Completed",
+              "value": 3900002
+            },
+            {
+              "label": "Cancelled",
+              "value": 499905
+            },
+            {
+              "label": "Failed",
+              "value": 400354
+            },
+            {
+              "label": "Awaiting payment",
+              "value": 100397
+            },
+            {
+              "label": "Refunded",
+              "value": 99342
+            }
+          ]
+        },
+        {
+          "title": "Executive decision",
+          "subtitle": "Growth without settlement control compounds customer harm.",
+          "type": "narrative",
+          "span": 12,
+          "headline": "At R10.33B sent, even a narrow break rate creates material customer-funds exposure. Corridor operations must pair commercial growth with status reconciliation.",
+          "text": "Growth without settlement control compounds customer harm.",
+          "actions": [
+            {
+              "title": "Triage high-value breaks",
+              "text": "Rank corridors by unsettled value, not count alone."
+            },
+            {
+              "title": "Protect customer communication",
+              "text": "Make pending, failed and refunded states explicit."
+            },
+            {
+              "title": "Track net revenue with service",
+              "text": "R863.3M net revenue must be read alongside settlement."
+            }
+          ],
+          "icon": "route"
+        }
+      ]
+    },
+    {
+      "id": "corridors",
+      "nav": "Corridor Network",
+      "eyebrow": "02 · AFRICAN ROUTES",
+      "title": "Corridor Network Intelligence",
+      "subtitle": "Compare flow, settlement and regulatory context across the African network.",
+      "kpis": [
+        {
+          "icon": "map",
+          "label": "CORRIDORS",
+          "value": "17",
+          "note": "Modelled route network",
+          "tone": "a"
+        },
+        {
+          "icon": "wallet",
+          "label": "NET REVENUE",
+          "value": "R863.3M",
+          "note": "Reconciled portfolio",
+          "tone": "b"
+        },
+        {
+          "icon": "route",
+          "label": "TOP VOLUME",
+          "value": "ZA–KE",
+          "note": "463k transfers",
+          "tone": "c"
+        },
+        {
+          "icon": "alert",
+          "label": "FRAUD FLAGGED",
+          "value": "39,832",
+          "note": "Rule-labelled events",
+          "tone": "d"
+        }
+      ],
+      "cards": [
+        {
+          "title": "Corridor opportunity matrix",
+          "subtitle": "Volume, settlement and regulatory triage",
+          "type": "matrix",
+          "span": 7,
+          "rows": [
+            {
+              "label": "ZA–KE",
+              "value": 88,
+              "display": "78.0%",
+              "note": "463k · low reg risk",
+              "status": "Scale"
+            },
+            {
+              "label": "ZA–MW",
+              "value": 73,
+              "display": "78.1%",
+              "note": "463k · high reg risk",
+              "status": "Control"
+            },
+            {
+              "label": "ZA–MZ",
+              "value": 82,
+              "display": "78.0%",
+              "note": "462k · low reg risk",
+              "status": "Grow"
+            },
+            {
+              "label": "ZA–ZW",
+              "value": 68,
+              "display": "77.9%",
+              "note": "462k · high reg risk",
+              "status": "Watch"
+            },
+            {
+              "label": "ZA–ZM",
+              "value": 81,
+              "display": "78.0%",
+              "note": "462k · low reg risk",
+              "status": "Grow"
+            }
+          ]
+        },
+        {
+          "title": "Nearest-neighbour evidence",
+          "subtitle": "Operational similarity, not prediction",
+          "type": "score",
+          "span": 5,
+          "rows": [
+            {
+              "label": "ZA–ZW ↔ ZA–MZ",
+              "value": 96.3,
+              "display": "0.963",
+              "note": "Closest route profile"
+            },
+            {
+              "label": "ZA–LS ↔ ZA–BW",
+              "value": 96.8,
+              "display": "0.968",
+              "note": "Regional peer"
+            },
+            {
+              "label": "ZA–SZ ↔ ZA–MU",
+              "value": 94,
+              "display": "0.940",
+              "note": "Small-corridor peer"
+            },
+            {
+              "label": "Same-cluster diagnostic",
+              "value": 94.1,
+              "display": "94.1%",
+              "note": "17-corridor diagnostic"
+            }
+          ]
+        },
+        {
+          "title": "Corridor action",
+          "subtitle": "Use similar routes to ask better operational questions.",
+          "type": "narrative",
+          "span": 12,
+          "headline": "Seventeen corridors are too few for a held-out accuracy claim. The similarity tool supports peer discovery and root-cause triage only.",
+          "text": "Use similar routes to ask better operational questions.",
+          "actions": [
+            {
+              "title": "Compare like corridors",
+              "text": "Benchmark service and fraud signals against nearest peers."
+            },
+            {
+              "title": "Keep risk context",
+              "text": "Regulatory tier changes the intervention."
+            },
+            {
+              "title": "Avoid false precision",
+              "text": "Do not present similarity as a forecast."
+            }
+          ],
+          "icon": "map"
+        }
+      ]
+    },
+    {
+      "id": "fx",
+      "nav": "FX & Pricing",
+      "eyebrow": "03 · UNIT ECONOMICS",
+      "title": "FX & Pricing Intelligence",
+      "subtitle": "Connect spread, transfer success and corridor value to sustainable customer pricing.",
+      "kpis": [
+        {
+          "icon": "wallet",
+          "label": "AVG FX SPREAD",
+          "value": "2.6%",
+          "note": "Synthetic portfolio",
+          "tone": "a"
+        },
+        {
+          "icon": "trend",
+          "label": "NET REVENUE",
+          "value": "R863.3M",
+          "note": "After transfer economics",
+          "tone": "b"
+        },
+        {
+          "icon": "route",
+          "label": "AVG SEND",
+          "value": "R2,066",
+          "note": "5M-transfer mean",
+          "tone": "c"
+        },
+        {
+          "icon": "shield",
+          "label": "PRICING COVERAGE",
+          "value": "100%",
+          "note": "All active corridors",
+          "tone": "d"
+        }
+      ],
+      "cards": [
+        {
+          "title": "Illustrative corridor spreads",
+          "subtitle": "Price needs risk and service context",
+          "type": "bars",
+          "span": 7,
+          "rows": [
+            {
+              "label": "ZA–ZW",
+              "value": 3.8,
+              "display": "3.8%"
+            },
+            {
+              "label": "ZA–MW",
+              "value": 3.4,
+              "display": "3.4%"
+            },
+            {
+              "label": "ZA–MZ",
+              "value": 2.9,
+              "display": "2.9%"
+            },
+            {
+              "label": "ZA–ZM",
+              "value": 2.5,
+              "display": "2.5%"
+            },
+            {
+              "label": "ZA–BW",
+              "value": 1.9,
+              "display": "1.9%"
+            },
+            {
+              "label": "ZA–MU",
+              "value": 1.6,
+              "display": "1.6%"
+            }
+          ]
+        },
+        {
+          "title": "Pricing decision matrix",
+          "subtitle": "Spread, service and funds exposure",
+          "type": "matrix",
+          "span": 5,
+          "rows": [
+            {
+              "label": "Zimbabwe",
+              "value": 92,
+              "display": "3.8%",
+              "note": "High risk · large flow",
+              "status": "Review"
+            },
+            {
+              "label": "Malawi",
+              "value": 84,
+              "display": "3.4%",
+              "note": "High reg risk",
+              "status": "Protect"
+            },
+            {
+              "label": "Mozambique",
+              "value": 76,
+              "display": "2.9%",
+              "note": "Low risk · scale",
+              "status": "Grow"
+            },
+            {
+              "label": "Botswana",
+              "value": 61,
+              "display": "1.9%",
+              "note": "Stable peer",
+              "status": "Defend"
+            }
+          ]
+        },
+        {
+          "title": "Pricing principle",
+          "subtitle": "Low price is not customer value if settlement fails.",
+          "type": "narrative",
+          "span": 12,
+          "headline": "Evaluate corridor contribution after exception handling, refunds and customer support. Make spread transparent and monitor whether price changes alter completion.",
+          "text": "Low price is not customer value if settlement fails.",
+          "actions": [
+            {
+              "title": "Protect transparent pricing",
+              "text": "Present fees and delivered value clearly."
+            },
+            {
+              "title": "Price the corridor, not the customer",
+              "text": "Avoid opaque individual discrimination."
+            },
+            {
+              "title": "Test outcomes",
+              "text": "Measure conversion and settlement together."
+            }
+          ],
+          "icon": "wallet"
+        }
+      ]
+    },
+    {
+      "id": "channels",
+      "nav": "Channels",
+      "eyebrow": "04 · DIGITAL DISTRIBUTION",
+      "title": "Agent & Digital Channel Intelligence",
+      "subtitle": "Understand where acquisition, wallet engagement and payout execution work—or break.",
+      "kpis": [
+        {
+          "icon": "users",
+          "label": "CUSTOMERS SCD2",
+          "value": "500K",
+          "note": "History-preserving dimension",
+          "tone": "a"
+        },
+        {
+          "icon": "wallet",
+          "label": "WALLET SHARE",
+          "value": "46%",
+          "note": "Synthetic digital mix",
+          "tone": "a"
+        },
+        {
+          "icon": "route",
+          "label": "AGENT SHARE",
+          "value": "31%",
+          "note": "Assisted origination",
+          "tone": "b"
+        },
+        {
+          "icon": "trend",
+          "label": "DIGITAL GROWTH",
+          "value": "+18.4%",
+          "note": "12-month directional",
+          "tone": "c"
+        }
+      ],
+      "cards": [
+        {
+          "title": "Origination mix",
+          "subtitle": "Where transfer journeys begin",
+          "type": "donut",
+          "span": 5,
+          "center": "5.0M",
+          "centerLabel": "transfers",
+          "rows": [
+            {
+              "label": "Mobile app",
+              "value": 34
+            },
+            {
+              "label": "Agent assisted",
+              "value": 31
+            },
+            {
+              "label": "Web",
+              "value": 18
+            },
+            {
+              "label": "USSD",
+              "value": 11
+            },
+            {
+              "label": "Partner API",
+              "value": 6
+            }
+          ]
+        },
+        {
+          "title": "Completion by channel",
+          "subtitle": "Synthetic service comparison",
+          "type": "bars",
+          "span": 7,
+          "rows": [
+            {
+              "label": "Partner API",
+              "value": 84.6,
+              "display": "84.6%"
+            },
+            {
+              "label": "Mobile app",
+              "value": 81.2,
+              "display": "81.2%"
+            },
+            {
+              "label": "Web",
+              "value": 79.1,
+              "display": "79.1%"
+            },
+            {
+              "label": "Agent assisted",
+              "value": 75.8,
+              "display": "75.8%"
+            },
+            {
+              "label": "USSD",
+              "value": 72.9,
+              "display": "72.9%"
+            }
+          ]
+        },
+        {
+          "title": "Channel improvement loop",
+          "subtitle": "Acquire to retained wallet use",
+          "type": "pipeline",
+          "span": 12,
+          "rows": [
+            {
+              "label": "Acquire",
+              "value": 500,
+              "display": "500K",
+              "note": "Customers SCD2"
+            },
+            {
+              "label": "Activate",
+              "value": 46,
+              "display": "46%",
+              "note": "Wallet share"
+            },
+            {
+              "label": "Complete",
+              "value": 78,
+              "display": "78%",
+              "note": "Settled"
+            },
+            {
+              "label": "Retain",
+              "value": 99.05,
+              "display": "AUC .991",
+              "note": "Churn model"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "risk",
+      "nav": "Risk & Compliance",
+      "eyebrow": "05 · CUSTOMER PROTECTION",
+      "title": "Customer Risk & Compliance",
+      "subtitle": "Prioritise fraud, credit and KYC review with measurable model evidence and human control.",
+      "kpis": [
+        {
+          "icon": "shield",
+          "label": "FRAUD AUC",
+          "value": "0.958",
+          "note": "Held-out test",
+          "tone": "a"
+        },
+        {
+          "icon": "users",
+          "label": "CHURN AUC",
+          "value": "0.991",
+          "note": "Held-out test",
+          "tone": "b"
+        },
+        {
+          "icon": "wallet",
+          "label": "CREDIT AUC",
+          "value": "0.948",
+          "note": "15k loan sample",
+          "tone": "c"
+        },
+        {
+          "icon": "alert",
+          "label": "FRAUD LABEL RATE",
+          "value": "10.3%",
+          "note": "Synthetic training label",
+          "tone": "d"
+        }
+      ],
+      "cards": [
+        {
+          "title": "Model evidence",
+          "subtitle": "Held-out metrics by decision domain",
+          "type": "score",
+          "span": 6,
+          "rows": [
+            {
+              "label": "Churn prediction",
+              "value": 99.05,
+              "display": "AUC .991",
+              "note": "AP .919 · 40k test"
+            },
+            {
+              "label": "Fraud detection",
+              "value": 95.82,
+              "display": "AUC .958",
+              "note": "AP .775 · 40k test"
+            },
+            {
+              "label": "Credit risk PD",
+              "value": 94.75,
+              "display": "AUC .948",
+              "note": "AP .917 · 3k test"
+            }
+          ]
+        },
+        {
+          "title": "Fraud feature influence",
+          "subtitle": "Model feature importance",
+          "type": "bars",
+          "span": 6,
+          "rows": [
+            {
+              "label": "Payment attempts",
+              "value": 31.2,
+              "display": "31.2%"
+            },
+            {
+              "label": "Send amount log",
+              "value": 24.1,
+              "display": "24.1%"
+            },
+            {
+              "label": "Hour of day",
+              "value": 13.8,
+              "display": "13.8%"
+            },
+            {
+              "label": "KYC level",
+              "value": 10.2,
+              "display": "10.2%"
+            },
+            {
+              "label": "FX spread",
+              "value": 8.7,
+              "display": "8.7%"
+            }
+          ]
+        },
+        {
+          "title": "Responsible action",
+          "subtitle": "A risk score should add review—not remove due process.",
+          "type": "narrative",
+          "span": 12,
+          "headline": "Fraud and credit scores are decision support on synthetic data. Every adverse action requires explainable evidence, policy checks and human review.",
+          "text": "A risk score should add review—not remove due process.",
+          "actions": [
+            {
+              "title": "Tune thresholds by cost",
+              "text": "Balance customer friction with loss prevention."
+            },
+            {
+              "title": "Monitor group outcomes",
+              "text": "Review approval and false-positive rates."
+            },
+            {
+              "title": "Retain provenance",
+              "text": "Link every alert to source transaction evidence."
+            }
+          ],
+          "icon": "shield"
+        }
+      ]
+    },
+    {
+      "id": "trust",
+      "nav": "ML & Trust",
+      "eyebrow": "06 · SNOWPARK CONTROL",
+      "title": "Snowpark ML & Trust",
+      "subtitle": "Show performance, data scale, lineage and the limits of every automated signal.",
+      "kpis": [
+        {
+          "icon": "box",
+          "label": "SNOWFLAKE ROWS",
+          "value": "40M+",
+          "note": "Platform-wide synthetic scale",
+          "tone": "a"
+        },
+        {
+          "icon": "brain",
+          "label": "ML MODELS",
+          "value": "3 + similarity",
+          "note": "Fraud, churn, credit",
+          "tone": "b"
+        },
+        {
+          "icon": "shield",
+          "label": "CV STABILITY",
+          "value": "±0.0003",
+          "note": "Churn AUC std",
+          "tone": "c"
+        },
+        {
+          "icon": "alert",
+          "label": "CORRIDORS",
+          "value": "17",
+          "note": "Similarity is diagnostic",
+          "tone": "d"
+        }
+      ],
+      "cards": [
+        {
+          "title": "Model registry",
+          "subtitle": "Validation and operating thresholds",
+          "type": "table",
+          "span": 7,
+          "columns": [
+            "Model",
+            "Train / test",
+            "AUC",
+            "Threshold",
+            "Use"
+          ],
+          "rows": [
+            [
+              "Fraud",
+              "160k / 40k",
+              "0.9582",
+              "0.40",
+              "Review queue"
+            ],
+            [
+              "Churn",
+              "160k / 40k",
+              "0.9905",
+              "0.50",
+              "Retention priority"
+            ],
+            [
+              "Credit PD",
+              "12k / 3k",
+              "0.9475",
+              "0.50",
+              "Underwriter support"
+            ],
+            [
+              "Corridor similarity",
+              "17 corridors",
+              "Diagnostic",
+              "n/a",
+              "Peer discovery"
+            ]
+          ]
+        },
+        {
+          "title": "Governed platform",
+          "subtitle": "Immutable landing to scored decision",
+          "type": "pipeline",
+          "span": 5,
+          "rows": [
+            {
+              "label": "Bronze",
+              "value": 40,
+              "display": "40M+",
+              "note": "Raw Snowflake"
+            },
+            {
+              "label": "dbt",
+              "value": 6,
+              "display": "6 marts",
+              "note": "Contracts"
+            },
+            {
+              "label": "Snowpark",
+              "value": 3,
+              "display": "3 models",
+              "note": "Registry"
+            },
+            {
+              "label": "Serve",
+              "value": 17,
+              "display": "17 routes",
+              "note": "Decision layer"
+            }
+          ]
+        },
+        {
+          "title": "Claim boundary",
+          "subtitle": "High validation scores do not substitute for production monitoring.",
+          "type": "narrative",
+          "span": 12,
+          "headline": "The datasets are synthetic and intentionally learnable. Production use would require drift, calibration, fairness and economic-impact monitoring.",
+          "text": "High validation scores do not substitute for production monitoring.",
+          "actions": [
+            {
+              "title": "Publish model cards",
+              "text": "Include labels, samples, thresholds and limits."
+            },
+            {
+              "title": "Monitor drift",
+              "text": "Compare live feature and outcome distributions."
+            },
+            {
+              "title": "Separate facts from inference",
+              "text": "Settlement status is deterministic; risk is predictive."
+            }
+          ],
+          "icon": "brain"
+        }
+      ]
+    }
+  ]
+}
