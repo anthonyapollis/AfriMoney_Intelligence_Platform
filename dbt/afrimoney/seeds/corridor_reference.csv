@@ -1,18 +1,18 @@
-corridor_code,send_country,receive_country,receive_country_name,receive_currency,region,corridor_tier,is_sadc,regulatory_regime,settlement_partner_type,launch_year
-ZA-ZW,ZA,ZW,Zimbabwe,USD,Southern Africa,High-Volume Core,true,SARB_BOP,cash_agent,2011
-ZA-MZ,ZA,MZ,Mozambique,MZN,Southern Africa,High-Volume Core,true,SARB_BOP,mobile_wallet,2012
-ZA-MW,ZA,MW,Malawi,MWK,Southern Africa,High-Volume Core,true,SARB_BOP,mobile_wallet,2013
-ZA-LS,ZA,LS,Lesotho,LSL,Southern Africa,High-Volume Core,true,CMA_EXEMPT,bank_deposit,2011
-ZA-ZM,ZA,ZM,Zambia,ZMW,Southern Africa,Premium Corridor,true,SARB_BOP,mobile_wallet,2014
-ZA-BW,ZA,BW,Botswana,BWP,Southern Africa,Premium Corridor,true,CMA_EXEMPT,bank_deposit,2013
-ZA-SZ,ZA,SZ,Eswatini,SZL,Southern Africa,Premium Corridor,true,CMA_EXEMPT,bank_deposit,2012
-ZA-NA,ZA,NA,Namibia,NAD,Southern Africa,Premium Corridor,true,CMA_EXEMPT,bank_deposit,2012
-ZA-TZ,ZA,TZ,Tanzania,TZS,East Africa,Premium Corridor,true,SARB_BOP,mobile_wallet,2016
-ZA-KE,ZA,KE,Kenya,KES,East Africa,Growth Market,false,SARB_BOP,mobile_wallet,2017
-ZA-UG,ZA,UG,Uganda,UGX,East Africa,Growth Market,false,SARB_BOP,mobile_wallet,2018
-ZA-RW,ZA,RW,Rwanda,RWF,East Africa,Growth Market,false,SARB_BOP,mobile_wallet,2019
-ZA-CD,ZA,CD,DR Congo,CDF,Central Africa,Growth Market,true,SARB_BOP,cash_agent,2018
-ZA-AO,ZA,AO,Angola,AOA,Central Africa,Growth Market,true,SARB_BOP,cash_agent,2017
-ZA-NG,ZA,NG,Nigeria,NGN,West Africa,Emerging Route,false,SARB_BOP,bank_deposit,2020
-ZA-GH,ZA,GH,Ghana,GHS,West Africa,Emerging Route,false,SARB_BOP,mobile_wallet,2021
-ZA-MG,ZA,MG,Madagascar,MGA,Indian Ocean,Emerging Route,true,SARB_BOP,cash_agent,2022
+corridor_code,send_country,receive_country,receive_country_name,receive_currency,region,corridor_tier,is_sadc,regulatory_regime,settlement_partner_type,annual_volume_zar_m
+ZA-ZW,ZA,ZW,Zimbabwe,USD,Southern Africa,High-Volume Core,true,SARB_BOP,cash_agent,18.4
+ZA-MZ,ZA,MZ,Mozambique,MZN,Southern Africa,High-Volume Core,true,SARB_BOP,mobile_wallet,12.1
+ZA-ZM,ZA,ZM,Zambia,ZMW,Southern Africa,High-Volume Core,true,SARB_BOP,mobile_wallet,8.7
+ZA-MW,ZA,MW,Malawi,MWK,Southern Africa,High-Volume Core,true,SARB_BOP,mobile_wallet,6.2
+ZA-BW,ZA,BW,Botswana,BWP,Southern Africa,Premium Corridor,true,CMA_EXEMPT,bank_deposit,5.4
+ZA-LS,ZA,LS,Lesotho,LSL,Southern Africa,Premium Corridor,true,CMA_EXEMPT,bank_deposit,4.8
+ZA-TZ,ZA,TZ,Tanzania,TZS,East Africa,Premium Corridor,true,SARB_BOP,mobile_wallet,4.1
+ZA-NA,ZA,NA,Namibia,NAD,Southern Africa,Premium Corridor,true,CMA_EXEMPT,bank_deposit,3.9
+ZA-KE,ZA,KE,Kenya,KES,East Africa,Premium Corridor,false,SARB_BOP,mobile_wallet,3.6
+ZA-NG,ZA,NG,Nigeria,NGN,West Africa,Growth Market,false,SARB_BOP,bank_deposit,3.4
+ZA-SZ,ZA,SZ,Eswatini,SZL,Southern Africa,Growth Market,true,CMA_EXEMPT,bank_deposit,3.1
+ZA-GH,ZA,GH,Ghana,GHS,West Africa,Growth Market,false,SARB_BOP,mobile_wallet,2.9
+ZA-MU,ZA,MU,Mauritius,MUR,Indian Ocean,Growth Market,true,SARB_BOP,bank_deposit,2.2
+ZA-MG,ZA,MG,Madagascar,MGA,Indian Ocean,Growth Market,true,SARB_BOP,cash_agent,1.8
+ZA-AO,ZA,AO,Angola,AOA,Central Africa,Emerging Route,true,SARB_BOP,cash_agent,1.4
+ZA-CD,ZA,CD,DR Congo,CDF,Central Africa,Emerging Route,true,SARB_BOP,cash_agent,1.1
+ZA-ET,ZA,ET,Ethiopia,ETB,East Africa,Emerging Route,false,SARB_BOP,cash_agent,0.9

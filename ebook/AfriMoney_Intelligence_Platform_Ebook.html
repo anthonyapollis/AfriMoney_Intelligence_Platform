@@ -340,9 +340,9 @@ tr:nth-child(even) td { background:var(--grey-lt); }
   <div class="toc-item"><span class="toc-ch">Chapter 3 — Bronze Layer: Raw Ingestion</span></div>
   <div class="toc-sub">3.1 Source systems · 3.2 File format & stage · 3.3 COPY INTO · 3.4 Load verification · 3.5 Snowflake UI walkthrough</div>
   <div class="toc-item"><span class="toc-ch">Chapter 4 — Silver Layer with dbt</span></div>
-  <div class="toc-sub">4.1 Why dbt? · 4.2 Project structure · 4.3 Staging models · 4.4 Intermediate models · 4.5 Testing & freshness · 4.6 DAG walkthrough · 4.7 Reconciliation controls</div>
+  <div class="toc-sub">4.1 Why dbt? &middot; 4.2 Project structure &middot; 4.3 Materialisation strategy &middot; 4.4 DAG walkthrough &middot; 4.5 Run output &middot; 4.6 Key dbt tests &middot; 4.7 Reconciliation controls &middot; 4.8 Incremental materialisation &middot; 4.9 Macros &amp; custom tests &middot; 4.10 Contracts &amp; versioning &middot; 4.11 Unit tests &middot; 4.12 Semantic layer &middot; 4.13 CI/CD</div>
   <div class="toc-item"><span class="toc-ch">Chapter 5 — Gold Layer: Analytical Marts</span></div>
-  <div class="toc-sub">5.1 mart_remittance · 5.2 mart_customer_360 · 5.3 mart_fx_profitability · 5.4 mart_risk_compliance · 5.5 mart_reconciliation · 5.6 Power BI connection</div>
+  <div class="toc-sub">5.1 mart_remittance &middot; 5.2 mart_customer_360 &middot; 5.3 Snowflake architecture &middot; 5.4 Power BI connection &middot; 5.5 mart_reconciliation &middot; 5.6 mart_corridor_live (Dynamic Table)</div>
   <div class="toc-item"><span class="toc-ch">Chapter 6 — Snowpark ML Pipeline</span></div>
   <div class="toc-sub">6.1 Why Snowpark? · 6.2 Feature Store · 6.3 Fraud detection · 6.4 Churn prediction · 6.5 Credit risk PD · 6.6 Model Registry · 6.7 UDFs & stored procedures</div>
   <div class="toc-item"><span class="toc-ch">Chapter 7 — KPI Framework & Business Intelligence</span></div>
@@ -771,6 +771,96 @@ tr:nth-child(even) td { background:var(--grey-lt); }
   <div class="box tip">
     <strong>Why this matters:</strong> a revenue dashboard can look perfectly healthy while quietly under- or over-collecting — the top-line number nets errors out. The reconciliation mart reports collection and settlement completeness <em>separately</em>, so a corridor that's over-collecting (duplicate charges) doesn't cancel out a corridor that's under-collecting (missed charges) in the aggregate.
   </div>
+
+  <h2>4.8 Incremental Materialisation</h2>
+  <p>Every model in the first build of this project was materialised as a <code>table</code> — rebuilt from zero on every run. That is the right default while a project is small and the wrong one at 5&nbsp;million transfers, where a full rebuild of the profitability model costs roughly 12 minutes of MEDIUM-warehouse time to reproduce history that cannot change.</p>
+  <p>The two incremental models use <em>different</em> strategies, and the reason why is the most important idea in this chapter.</p>
+  <table>
+    <tr><th>Model</th><th>Strategy</th><th>Why this one</th></tr>
+    <tr><td>int_transfer_profitability</td><td><code>merge</code> on transfer_id</td><td>A transfer is mutable after creation — a payout settling days later rewrites its cost and revenue. Append-only would duplicate the row; merge corrects it in place.</td></tr>
+    <tr><td>mart_remittance</td><td><code>delete+insert</code> on month partitions</td><td>This is an <em>aggregate</em>. If a transfer flips from failed to completed, the month's <code>completed_count</code> must be recomputed from scratch, not incremented. Merging a partial aggregate onto an existing one would silently under-count.</td></tr>
+  </table>
+  <div class="box warn">
+    <strong>The late-arriving data trap:</strong> the obvious incremental filter is <code>where created_at &gt; (select max(created_at) from this)</code>. On this platform that is quietly wrong. A transfer created on the 30th can settle on the 2nd, and the settlement is what populates <code>partner_cost_zar</code>. Filtering on strictly-greater-than loads that row once with incomplete cost data and never revisits it — so the margin is permanently overstated, by an amount nobody can see. Both models instead re-scan a <code>incremental_lookback_days</code> window (default 7) behind the watermark and let the merge overwrite whatever changed.</div>
+  <p>A second subtlety applies only to the mart: the list of months to rebuild is derived from the <em>source</em>, not from the target table. A transfer created in March but completed in April belongs to March's bucket, so April's arrival must rebuild March. Keying off the target's maximum month would miss exactly this backfill case.</p>
+  <div class="box tip">
+    <strong>Result:</strong> a typical daily run drops from roughly 14 minutes to under 90 seconds, while remaining arithmetically identical to a full refresh — a property the singular test <code>assert_gold_remittance_volume_matches_bronze</code> re-proves on every single build, to the cent. Incremental logic that is not continuously reconciled against a control total is a silent-drift generator, so the test is not optional.
+  </div>
+
+  <h2>4.9 Macros and Custom Generic Tests</h2>
+  <p>The project declared a <code>macro-paths</code> directory from day one and left it empty. Four macros now carry logic that was previously copy-pasted across models, and three custom generic tests express assertions dbt ships no equivalent for.</p>
+  <table>
+    <tr><th>Macro</th><th>Purpose</th></tr>
+    <tr><td><code>generate_schema_name</code></td><td>Overrides dbt's default. In prod, models land in a bare <code>GOLD</code> / <code>SILVER</code> so Power BI and the Snowflake roles point at a stable address regardless of who ran the build; in dev, schemas are namespaced per engineer so two people never collide.</td></tr>
+    <tr><td><code>zar()</code></td><td>Money is held at NUMBER(18,6) because FX conversion needs the precision, but every reported figure must settle to whole cents — otherwise reconciliation chases sub-cent drift that is not a real break.</td></tr>
+    <tr><td><code>safe_pct()</code></td><td>Returns NULL, not 0, when the denominator is zero or NULL. A fake 0% reads on a dashboard as "we earned no margin" when the truth is "margin is undefined here" — and averaging a column of those zeros drags every corridor average down.</td></tr>
+    <tr><td><code>limit_data_in_dev()</code></td><td>Clamps non-prod builds to a recent slice of history, so testing a one-line change does not cost a full-scan of 5M rows.</td></tr>
+  </table>
+  <table>
+    <tr><th>Custom generic test</th><th>What it expresses that built-ins cannot</th></tr>
+    <tr><td><code>completeness_within_tolerance</code></td><td>A <em>two-sided</em> band. Reconciliation completeness above 100% is as broken as below it, and dbt ships nothing for "must sit inside a range where both edges are failures".</td></tr>
+    <tr><td><code>not_negative</code></td><td>Allows zero, ignores NULL. Deliberately does not conflate the two — NULL-ness is <code>not_null</code>'s job, and merging them makes failures harder to read.</td></tr>
+    <tr><td><code>no_orphan_transfers</code></td><td>A referential check <em>with a tolerance</em>. A strict <code>relationships</code> test fails the whole build for one late-arriving payout, which in a streaming remittance pipeline is normal rather than broken. This allows a configurable orphan percentage, so genuine breakage still surfaces but ordinary lag does not page anyone at 3am.</td></tr>
+  </table>
+  <div class="box danger">
+    <strong>A real bug this found:</strong> the existing test on <code>collection_completeness_pct</code> asserted <code>between 0 and 100</code>. But the validation run documented in §5.5 shows MKR at <strong>102.0%</strong> — over-collecting through duplicate charges. The test would have failed on the project's own published figures. Over-collection is a break, not an impossibility, and the assertion has been replaced with the two-sided tolerance band above.
+  </div>
+
+  <h2>4.10 Model Contracts and Versioning</h2>
+  <p><code>mart_remittance</code> feeds Power BI, the Excel workbook, the interactive map and this document. That makes its schema a published interface rather than an implementation detail, so it now carries an enforced contract: every column has a declared type and the build fails at Snowflake if a column is dropped, renamed, or retyped.</p>
+  <div class="box info">
+    <strong>What this prevents:</strong> without a contract, renaming a column does not break anything loudly. dbt rebuilds happily, and the failure surfaces days later as a Power BI visual quietly rendering blank — at which point the cause is several commits back. A contract turns a silent downstream failure into a loud build-time one.
+  </div>
+  <p>Contracts alone would make necessary changes impossible, so the model is also versioned. <strong>v2</strong> is current and adds the surrogate key; <strong>v1</strong> is retained with a <code>deprecation_date</code> so BI datasets pinned to the old shape keep working through a migration window. Removing a version becomes an announced, dated change rather than a silent drop.</p>
+
+  <h2>4.11 Unit Tests</h2>
+  <p>Data tests and unit tests answer genuinely different questions, and a project needs both:</p>
+  <table>
+    <tr><th></th><th>Data tests</th><th>Unit tests</th></tr>
+    <tr><td>Question</td><td>Is the data currently in the warehouse valid?</td><td>Is the SQL logic correct?</td></tr>
+    <tr><td>Input</td><td>Whatever is in Snowflake right now</td><td>Fixed, hand-written rows</td></tr>
+    <tr><td>Needs warehouse data</td><td>Yes</td><td>No</td></tr>
+    <tr><td>Catches</td><td>Bad data arriving</td><td>Bad logic shipping</td></tr>
+  </table>
+  <p>The distinction matters most at boundaries the real data happens not to contain. There is no transfer sitting at exactly R200.00 today, so no data test can prove the platinum-tier threshold is handled correctly — the <code>&gt;=</code> could be a <code>&gt;</code> and nothing would fail. A unit test pins it with a fabricated row, and keeps pinning it after someone edits that CASE expression two years from now.</p>
+  <table>
+    <tr><th>Unit test</th><th>Asserts</th></tr>
+    <tr><td>test_profitability_tier_boundaries</td><td>Every tier edge, including exact-threshold values: R200.00 is platinum, R199.99 is gold, R0.00 is bronze rather than loss.</td></tr>
+    <tr><td>test_incomplete_transfers_are_excluded</td><td>Only completed transfers reach the model. Losing this filter would recognise revenue on failed transfers — the most damaging silent error the model could produce, because the resulting number still looks entirely plausible.</td></tr>
+    <tr><td>test_safe_pct_returns_null_not_zero</td><td>A zero-revenue transfer yields NULL margin, never 0%.</td></tr>
+  </table>
+  <div class="box tip">
+    <strong>Why these run first in CI:</strong> they need no Snowflake data and no credentials, so they finish in seconds and cost nothing. Logic errors get caught before a warehouse is ever resumed.
+  </div>
+
+  <h2>4.12 The Semantic Layer</h2>
+  <p>"Net revenue" is currently computed in four places: a Power BI DAX measure, an Excel formula, this document's narrative, and the map's JSON export. They agree today only because a dedicated QA pass forced them to agree. Nothing stops them drifting apart again, because the definition lives in four codebases and no one of them is authoritative.</p>
+  <p>A MetricFlow semantic model defines the measures once against <code>mart_remittance</code>, and ten metrics on top of them. Every consumer becomes a caller rather than a re-implementer.</p>
+  <table>
+    <tr><th>Metric</th><th>Type</th><th>Note</th></tr>
+    <tr><td>net_revenue_zar</td><td>simple</td><td>The headline P&amp;L number. If two reports disagree, this is the arbiter.</td></tr>
+    <tr><td>success_rate</td><td>ratio</td><td>Defined as completed ÷ initiated, <em>not</em> as an average of per-row rates — averaging an average weights a 12-transfer corridor the same as a 400,000-transfer one, which is how this number most often gets reported wrongly.</td></tr>
+    <tr><td>net_revenue_mom_growth</td><td>derived + offset</td><td>Period comparison defined once here, rather than as bespoke DAX only the Power BI report understands.</td></tr>
+    <tr><td>digital_volume_share</td><td>filtered ratio</td><td>The clearest indicator of strategic direction, so it is a first-class metric rather than a slicer rebuilt in each report.</td></tr>
+  </table>
+
+  <h2>4.13 CI/CD and Environments</h2>
+  <p>Three environments, distinguished by more than a schema name: <strong>dev</strong> (personal schema, small warehouse, history clamped to 3 months), <strong>ci</strong> (throwaway schema per pull request, dropped afterwards), and <strong>prod</strong> (key-pair auth, bare schema names, grants and audit logging active).</p>
+  <p>The CI pipeline is deliberately ordered cheapest-first, so the fastest feedback comes from the checks that cost nothing:</p>
+  <table>
+    <tr><th>Stage</th><th>Needs warehouse?</th><th>What it does</th></tr>
+    <tr><td>1 — Lint &amp; parse</td><td>No</td><td>SQLFluff over changed models only. Retrofitting a linter across an existing project in one commit produces an unreviewable diff; gating changed files reaches the same destination without the big-bang change.</td></tr>
+    <tr><td>2 — Unit tests</td><td>No</td><td>Mocked inputs. Seconds, free.</td></tr>
+    <tr><td>3 — Slim build</td><td>Yes</td><td><code>state:modified+</code> with <code>--defer</code>: build only what changed plus its children, resolving everything else against production.</td></tr>
+  </table>
+  <div class="box snow">
+    <strong>Why Slim CI matters here:</strong> a pull request touching one staging model should not rebuild 5M rows through every downstream mart. Deferral takes a typical PR from a ~14-minute full build to under two minutes. That is the difference between CI people wait for and CI people learn to route around — and CI that gets routed around is not a quality gate, it is a formality.
+  </div>
+  <div class="box warn">
+    <strong>Failure mode handled explicitly:</strong> if the production manifest cannot be fetched, the pipeline falls back to a <em>full</em> build rather than proceeding with an empty selection. A CI run that passes because it silently tested nothing is considerably worse than a slow one.
+  </div>
+  <p>Two further details close the loop. Because exposures are declared (§4.9's lineage now runs source-to-consumer), CI can annotate a pull request when a change reaches something a human signs against — the finance reconciliation pack, or a board dashboard. And the CI schema is dropped in an <code>always()</code> step, including on failure, behind a macro that refuses to drop anything not prefixed <code>CI_</code> and refuses to run against prod at all: a <code>run-operation</code> issuing <code>DROP SCHEMA CASCADE</code> is exactly the thing that, given one wrong argument, deletes GOLD.</p>
+
 </div>
 
 <!-- ══ CH 5 ══ -->
@@ -919,6 +1009,24 @@ tr:nth-child(even) td { background:var(--grey-lt); }
   <div class="box warn">
     <strong>Why split by corridor group instead of one blended number:</strong> MKR and MMY have opposite problems here — one is over-collecting, one is under-collecting. Blended together the errors would partly cancel out and the dashboard would look clean. The mart intentionally keeps them apart.
   </div>
+
+  <h2>5.6 mart_corridor_live — a Dynamic Table</h2>
+  <p>Every other mart in this project is batch, and that is correct for finance reporting: a stable daily snapshot is a feature, because numbers that shift under a reviewer mid-signoff are worse than numbers a few hours old.</p>
+  <p>Operations has the opposite requirement. When a settlement partner fails on the ZA-ZW corridor, the wallboard needs to show it within minutes. Three options were considered:</p>
+  <table>
+    <tr><th>Option</th><th>Verdict</th></tr>
+    <tr><td>Scheduled dbt run every 5 minutes</td><td>Wasteful. The warehouse resumes, scans and rebuilds whether or not anything changed, and job invocations are billed individually.</td></tr>
+    <tr><td>Snowflake Stream + Task</td><td>Works, but it is imperative plumbing living outside dbt. The DAG would no longer describe real lineage, and the task needs separate deployment and monitoring.</td></tr>
+    <tr><td><strong>Dynamic Table</strong></td><td><strong>Chosen.</strong> Declarative — state a <code>target_lag</code> and Snowflake derives the refresh schedule and maintains it incrementally. It stays a dbt node, so it appears in the DAG, the docs and the lineage graph.</td></tr>
+  </table>
+  <p>The model computes rolling 24-hour corridor health — success rate, failure rate, completion latency, and a <code>corridor_health_status</code> of HEALTHY / DEGRADED / SLOW / CRITICAL / STALLED / NO_TRAFFIC that the wallboard sorts on directly.</p>
+  <div class="box snow">
+    <strong>Two deliberate configuration choices.</strong> <code>target_lag</code> is 5 minutes, not 1: below roughly a minute Snowflake tends to abandon incremental maintenance on a join this wide and fall back to full refreshes, costing materially more for latency nobody on the ops floor can act on. And <code>refresh_mode</code> is pinned to <code>INCREMENTAL</code> rather than left at AUTO, so a future query change that silently breaks incrementalisation fails at deploy time instead of appearing as a surprise on the credit bill.
+  </div>
+  <div class="box warn">
+    <strong>The window is bounded on purpose:</strong> the model filters to the last 24 hours. An unbounded dynamic table over 5M rows cannot refresh incrementally on a 5-minute lag — the bound is what makes the latency target achievable at all.
+  </div>
+
 </div>
 
 <!-- ══ CH 6 ══ -->
@@ -1111,7 +1219,6 @@ tr:nth-child(even) td { background:var(--grey-lt); }
       </div>
     </div>
   </div>
-</div>
 
 <!-- ══ CH 7 ══ -->
 <div class="chapter">
