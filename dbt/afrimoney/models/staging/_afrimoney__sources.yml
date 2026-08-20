@@ -1,0 +1,32 @@
+version: 2
+
+sources:
+  - name: bronze
+    database: AFRIMONEY_DB
+    schema: BRONZE
+    tables:
+      - name: fact_remittance_transfer
+        description: "Raw transfer orders. Grain: one row per remittance order."
+        freshness:
+          warn_after: {count: 25, period: hour}
+          error_after: {count: 48, period: hour}
+        loaded_at_field: _LOADED_AT
+      - name: dim_customer
+        description: "Customer SCD2"
+      - name: dim_recipient
+      - name: fact_fx_rate
+        freshness:
+          warn_after: {count: 7, period: hour}
+          error_after: {count: 13, period: hour}
+        loaded_at_field: _LOADED_AT
+      - name: fact_payment
+        description: "One row per payment attempt against a transfer. Only PAYMENT_STATUS = 'SUCCESS' should be counted toward collected revenue — declined/failed retries are logged here too."
+      - name: fact_payout
+        description: "One row per payout attempt disbursed to a recipient via a settling partner. Only PAYOUT_STATUS = 'SUCCESS' represents money actually disbursed."
+      - name: fact_wallet_ledger
+      - name: fact_card_transaction
+      - name: fact_loan_application
+      - name: fact_loan_repayment
+      - name: fact_insurance_policy
+      - name: fact_insurance_claim
+      - name: fact_usd_savings

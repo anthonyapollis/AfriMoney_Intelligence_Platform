@@ -22,7 +22,7 @@ except ImportError:
     from openpyxl.chart import BarChart, LineChart, PieChart, Reference
     from openpyxl.utils import get_column_letter
 
-BASE    = Path(r"C:\Users\Anthony.DESKTOP-ES5HL78\Documents\Fintech_Intelligence_Platform")
+BASE    = Path(__file__).resolve().parents[1]
 XL_DIR  = BASE / "excel"
 XL_DIR.mkdir(exist_ok=True)
 ML_FILE = BASE / "ml_models" / "ml_results.json"
@@ -498,6 +498,101 @@ for i,(m,fr,fr_rag,kyc,kyc_rag,sr,ops_rag,canc) in enumerate(risk_data):
     ws6.cell(row=r,column=7).font=Font(size=10,bold=True,color=cl_sr,name="Segoe UI")
 
 # ══════════════════════════════════════════════════════════════
+# TAB 6B — RECONCILIATION & SETTLEMENT CONTROLS
+# ══════════════════════════════════════════════════════════════
+wsR = make_sheet("Reconciliation", CO)
+wsR.sheet_view.showGridLines = False
+wsR.column_dimensions["A"].width = 2
+
+wsR.merge_cells("B1:J2")
+h=wsR["B1"]; h.value="Reconciliation & Settlement Controls — Collection vs Disbursement"
+h.font=bold(16,W); h.fill=fill(NV); h.alignment=centre()
+wsR.row_dimensions[1].height=22; wsR.row_dimensions[2].height=22
+
+wsR.merge_cells("B3:J3")
+note=wsR["B3"]
+note.value=("mart_reconciliation (dbt Gold) — reconciles committed transfer amounts against FACT_PAYMENT "
+            "(collection) and FACT_PAYOUT (settlement). Split by business unit so an over-collecting "
+            "corridor can't hide an under-collecting one behind a blended average.")
+note.font=Font(size=9,italic=True,color="AAAAAA",name="Segoe UI")
+note.fill=fill(NV); note.alignment=centre()
+wsR.row_dimensions[3].height=16
+
+recon_kpis=[("Collection — MKR","102.0%",CO),("Collection — MMY","96.5%",CO),
+            ("Settlement — MKR","99.3%",G),("Settlement — MMY","96.1%",GO),
+            ("Total Recon. Breaks","20",CO)]
+for i,(lbl,val,cl) in enumerate(recon_kpis):
+    c=2+i*2
+    wsR.merge_cells(start_row=4,start_column=c,end_row=4,end_column=c+1)
+    wsR.merge_cells(start_row=5,start_column=c,end_row=5,end_column=c+1)
+    lc=wsR.cell(row=4,column=c,value=lbl); lc.font=Font(size=9,bold=True,color=cl,name="Segoe UI")
+    lc.fill=fill(LG); lc.alignment=centre()
+    vc=wsR.cell(row=5,column=c,value=val); vc.font=bold(16,cl)
+    vc.fill=fill(LG); vc.alignment=centre()
+    wsR.row_dimensions[4].height=14; wsR.row_dimensions[5].height=32
+
+header_row(wsR,7,[2,3,4,5,6,7,8,9],
+           ["Business","Completed Xfers","Expected Collection R","Actual Collection R",
+            "Collection %","Committed R","Disbursed R","Settlement %"],
+           bg=NV)
+recon_biz=[
+    ("MKR",178,544184.28,555149.99,102.0,530911.43,527190.16,99.3),
+    ("MMY",92,286639.41,276467.48,96.5,279648.23,268740.38,96.1),
+]
+for i,(biz,cnt,exp_c,act_c,coll_pct,commit,disb,settle_pct) in enumerate(recon_biz):
+    r=8+i; wsR.row_dimensions[r].height=22
+    bg_r=LG if i%2==0 else W
+    cl=MKR if biz=="MKR" else MMY
+    vals=[biz,f"{cnt:,}",f"R {exp_c:,.2f}",f"R {act_c:,.2f}",f"{coll_pct}%",
+          f"R {commit:,.2f}",f"R {disb:,.2f}",f"{settle_pct}%"]
+    for j,v in enumerate(vals):
+        c=wsR.cell(row=r,column=2+j,value=v)
+        c.fill=fill(bg_r); c.border=border(); c.alignment=centre()
+        c.font=Font(size=10,bold=(j==0),color=cl if j==0 else "1A2332",name="Segoe UI")
+    pct_cl = CO if not (98 <= coll_pct <= 102) else G
+    wsR.cell(row=r,column=6).font=Font(size=10,bold=True,color=pct_cl,name="Segoe UI")
+
+wsR.row_dimensions[11].height=18
+wsR.cell(row=11,column=2).value="Break Types Detected (validation run)"
+wsR.cell(row=11,column=2).font=bold(11,NV); wsR.cell(row=11,column=2).fill=fill(LG)
+
+header_row(wsR,12,[2,3,4],["Break Type","Count","Model"],bg=NV)
+break_data=[
+    ("MISSING_PAYMENT",5,"int_payment_reconciliation"),
+    ("DUPLICATE_SUCCESSFUL_PAYMENT",4,"int_payment_reconciliation"),
+    ("AMOUNT_MISMATCH",5,"int_payment_reconciliation"),
+    ("MISSING_SETTLEMENT",6,"int_payout_reconciliation"),
+]
+for i,(bt,cnt,mdl) in enumerate(break_data):
+    r=13+i; wsR.row_dimensions[r].height=20
+    bg_r=LG if i%2==0 else W
+    for j,v in enumerate([bt,cnt,mdl]):
+        c=wsR.cell(row=r,column=2+j,value=v)
+        c.fill=fill(bg_r); c.border=border(); c.alignment=centre() if j!=0 else left()
+        c.font=Font(size=10,color=CO if j==0 else "1A2332",bold=(j==0),name="Segoe UI")
+
+wsR.row_dimensions[18].height=18
+wsR.cell(row=18,column=2).value="Target / Alert Thresholds"
+wsR.cell(row=18,column=2).font=bold(11,NV); wsR.cell(row=18,column=2).fill=fill(LG)
+
+header_row(wsR,19,[2,3,4,5],["KPI","Target","Alert","Owner"],bg=NV)
+threshold_data=[
+    ("Collection Completeness","99.5–100.5%","<98% or >102%","Finance / Treasury Ops"),
+    ("Settlement Completeness","99.5–100.5%","<98% or >102%","Finance / Treasury Ops"),
+    ("Reconciliation Breaks","0","Any break, 2+ days running","Finance / Treasury Ops"),
+]
+for i,(kpi,tgt,alt,own) in enumerate(threshold_data):
+    r=20+i; wsR.row_dimensions[r].height=20
+    bg_r=LG if i%2==0 else W
+    for j,v in enumerate([kpi,tgt,alt,own]):
+        c=wsR.cell(row=r,column=2+j,value=v)
+        c.fill=fill(bg_r); c.border=border(); c.alignment=left() if j in [0,3] else centre()
+        c.font=reg()
+
+for col,w in zip("BCDEFGHIJ",[6,16,18,18,12,16,16,12,10]):
+    wsR.column_dimensions[col].width=w
+
+# ══════════════════════════════════════════════════════════════
 # TAB 7 — LENDING (MUKURU)
 # ══════════════════════════════════════════════════════════════
 ws7 = make_sheet("AfriMoney Lending", NV)
@@ -625,11 +720,14 @@ tables=[
     ("SILVER","stg_transfers","view","dbt view","—","Cleaned transfers + derived fields",SK),
     ("SILVER","int_transfer_profitability","~5M","dbt table","—","Transfers + FX join + margin tiers",SK),
     ("SILVER","int_customer_transfer_stats","~500K","dbt table","—","Aggregated customer behaviour",SK),
+    ("SILVER","int_payment_reconciliation","~5M","dbt table","transfer_id","Collected vs committed, per transfer",SK),
+    ("SILVER","int_payout_reconciliation","~4.4M","dbt table","transfer_id","Disbursed vs committed, per transfer",SK),
     ("GOLD","mart_remittance","~50K","dbt table","—","Monthly corridor KPIs + revenue",GO),
     ("GOLD","mart_customer_360","~500K","dbt table","—","One row per customer + LTV/engagement",GO),
     ("GOLD","mart_fx_profitability","~200","dbt table","—","Corridor FX margin by month",GO),
     ("GOLD","mart_risk_compliance","~12","dbt table","—","Monthly risk RAG status KPIs",GO),
     ("GOLD","mart_loans_mukuru","~1K","dbt table","—","Loan origination + ECL + repayment",GO),
+    ("GOLD","mart_reconciliation","~200","dbt table","—","Monthly collection/settlement completeness",GO),
     ("ML_DB","FRAUD_FEATURES","~200K","Feature table","—","15 fraud features refreshed daily",CO),
     ("ML_DB","CHURN_FEATURES","~500K","Feature table","—","21 churn features refreshed weekly",CO),
 ]
@@ -669,7 +767,7 @@ about=[
     ("Architecture","Bronze → Silver → Gold (Medallion)"),
     ("Data Volume","30M+ rows across 9 Bronze + Silver + Gold layers"),
     ("ML Models","Fraud Detection (AUC "+str(ml["fraud"]["auc"])+") · Churn ("+str(ml["churn"]["auc"])+") · Credit PD ("+str(ml["credit"]["auc"])+")"),
-    ("dbt Models","14 models · 28 tests passing"),
+    ("dbt Models","13 models · 41 tests passing (incl. payment & settlement reconciliation)"),
     ("Corridors","17 active SA-Africa remittance corridors"),
     ("Disclaimer","Synthetic data only. No real customer data used."),
 ]

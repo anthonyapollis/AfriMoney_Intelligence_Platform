@@ -340,9 +340,9 @@ tr:nth-child(even) td { background:var(--grey-lt); }
   <div class="toc-item"><span class="toc-ch">Chapter 3 — Bronze Layer: Raw Ingestion</span></div>
   <div class="toc-sub">3.1 Source systems · 3.2 File format & stage · 3.3 COPY INTO · 3.4 Load verification · 3.5 Snowflake UI walkthrough</div>
   <div class="toc-item"><span class="toc-ch">Chapter 4 — Silver Layer with dbt</span></div>
-  <div class="toc-sub">4.1 Why dbt? · 4.2 Project structure · 4.3 Staging models · 4.4 Intermediate models · 4.5 Testing & freshness · 4.6 DAG walkthrough</div>
+  <div class="toc-sub">4.1 Why dbt? · 4.2 Project structure · 4.3 Staging models · 4.4 Intermediate models · 4.5 Testing & freshness · 4.6 DAG walkthrough · 4.7 Reconciliation controls</div>
   <div class="toc-item"><span class="toc-ch">Chapter 5 — Gold Layer: Analytical Marts</span></div>
-  <div class="toc-sub">5.1 mart_remittance · 5.2 mart_customer_360 · 5.3 mart_fx_profitability · 5.4 mart_risk_compliance · 5.5 Power BI connection</div>
+  <div class="toc-sub">5.1 mart_remittance · 5.2 mart_customer_360 · 5.3 mart_fx_profitability · 5.4 mart_risk_compliance · 5.5 mart_reconciliation · 5.6 Power BI connection</div>
   <div class="toc-item"><span class="toc-ch">Chapter 6 — Snowpark ML Pipeline</span></div>
   <div class="toc-sub">6.1 Why Snowpark? · 6.2 Feature Store · 6.3 Fraud detection · 6.4 Churn prediction · 6.5 Credit risk PD · 6.6 Model Registry · 6.7 UDFs & stored procedures</div>
   <div class="toc-item"><span class="toc-ch">Chapter 7 — KPI Framework & Business Intelligence</span></div>
@@ -757,6 +757,20 @@ tr:nth-child(even) td { background:var(--grey-lt); }
     <tr><td>unique(customer_id)</td><td>mart_customer_360</td><td>Fan-trap joins that inflate customer count</td></tr>
     <tr><td>freshness(fact_remittance_transfer)</td><td>source</td><td>Pipeline failure — data not loaded in 48h</td></tr>
   </table>
+
+  <h2>4.7 Reconciliation Controls</h2>
+  <p>Two new intermediate models close a gap the KPI glossary had flagged but never built: <code>int_payment_reconciliation</code> and <code>int_payout_reconciliation</code>. Each reconciles one side of the money movement against <code>FACT_REMITTANCE_TRANSFER</code> — collection (<code>FACT_PAYMENT</code>) and settlement (<code>FACT_PAYOUT</code>) — counting only <code>SUCCESS</code>-status attempts so retried or declined attempts can't inflate the totals.</p>
+  <table>
+    <tr><th>Test</th><th>Model</th><th>What it catches</th></tr>
+    <tr><td>accepted_values(payment_recon_status)</td><td>int_payment_reconciliation</td><td>Unhandled recon outcomes — forces every new status branch to be classified</td></tr>
+    <tr><td>expression_is_true(successful_payment_count &lt;= 1)</td><td>int_payment_reconciliation</td><td>Duplicate successful charges on the same transfer</td></tr>
+    <tr><td>expression_is_true(successful_payout_count &lt;= 1)</td><td>int_payout_reconciliation</td><td>Duplicate settlements disbursed for one transfer</td></tr>
+    <tr><td>expression_is_true(total_reconciliation_breaks &gt;= 0)</td><td>mart_reconciliation</td><td>Sanity bound on the roll-up KPI itself</td></tr>
+    <tr><td>singular: assert_gold_remittance_volume_matches_bronze</td><td>mart_remittance</td><td>Silver→Gold control total — catches join fanout or dropped rows in the mart, to the cent</td></tr>
+  </table>
+  <div class="box tip">
+    <strong>Why this matters:</strong> a revenue dashboard can look perfectly healthy while quietly under- or over-collecting — the top-line number nets errors out. The reconciliation mart reports collection and settlement completeness <em>separately</em>, so a corridor that's over-collecting (duplicate charges) doesn't cancel out a corridor that's under-collecting (missed charges) in the aggregate.
+  </div>
 </div>
 
 <!-- ══ CH 5 ══ -->
@@ -886,6 +900,24 @@ tr:nth-child(even) td { background:var(--grey-lt); }
 
   <div class="box snow">
     <strong>DirectQuery tip:</strong> Enable <em>Query folding</em> in Power Query and use <em>aggregation tables</em> for the most common visual types (monthly trend, corridor bar chart). This reduces ANALYTICS_WH credit consumption by 60–80% compared to importing all mart rows.
+  </div>
+
+  <h2>5.5 mart_reconciliation</h2>
+  <p>Grain: <strong>business × corridor × month</strong>. This is the finance/ops sign-off surface — did the platform collect what it committed to collect, and disburse what it committed to disburse? It joins <code>int_payment_reconciliation</code> (collection side) to <code>int_payout_reconciliation</code> (settlement side) and rolls both up into completeness percentages plus a single <code>total_reconciliation_breaks</code> count that should trend to zero.</p>
+  <table>
+    <tr><th>Metric Group</th><th>Key Fields</th></tr>
+    <tr><td>Collection</td><td>total_expected_collection_zar, total_actual_collection_zar, collection_completeness_pct, missing_payment_count, duplicate_payment_count</td></tr>
+    <tr><td>Settlement</td><td>total_committed_amount_zar, total_disbursed_amount_zar, settlement_completeness_pct, missing_settlement_count, duplicate_settlement_count</td></tr>
+    <tr><td>Roll-up</td><td>total_reconciliation_breaks — sum of every break type across both sides, for a one-glance health check</td></tr>
+  </table>
+  <p>Example output from a validation run (synthetic sample, deliberately seeded with a few broken transfers to prove the model catches them):</p>
+  <table>
+    <tr><th>Business</th><th>Completed Transfers</th><th>Collection Completeness</th><th>Settlement Completeness</th></tr>
+    <tr><td>MKR</td><td>178</td><td>102.0% <span style="color:#E74C3C">(over-collecting — duplicate charges)</span></td><td>99.3%</td></tr>
+    <tr><td>MMY</td><td>92</td><td>96.5% <span style="color:#E74C3C">(under-collecting — missing payments)</span></td><td>96.1%</td></tr>
+  </table>
+  <div class="box warn">
+    <strong>Why split by corridor group instead of one blended number:</strong> MKR and MMY have opposite problems here — one is over-collecting, one is under-collecting. Blended together the errors would partly cancel out and the dashboard would look clean. The mart intentionally keeps them apart.
   </div>
 </div>
 
@@ -1113,6 +1145,15 @@ tr:nth-child(even) td { background:var(--grey-lt); }
   <div class="box warn">
     <strong>Vanity metrics to avoid:</strong> "17 million customers served" means nothing without paired context. Always report: monthly active customers, transacting rate (% who sent in last 30 days), and retention rate. A large registered base with 5% monthly active rate is a crisis, not a success story.
   </div>
+
+  <h2>7.3 Reconciliation KPIs — Computed in mart_reconciliation</h2>
+  <table>
+    <tr><th>KPI</th><th>Formula</th><th>Target</th><th>Alert</th></tr>
+    <tr><td>Collection Completeness</td><td>total_actual_collection_zar / total_expected_collection_zar * 100</td><td>99.5–100.5%</td><td>&lt; 98% or &gt; 102%</td></tr>
+    <tr><td>Settlement Completeness</td><td>total_disbursed_amount_zar / total_committed_amount_zar * 100</td><td>99.5–100.5%</td><td>&lt; 98% or &gt; 102%</td></tr>
+    <tr><td>Reconciliation Breaks</td><td>missing + duplicate + mismatch counts, collection + settlement</td><td>0</td><td>&gt; 0 for 2 consecutive days</td></tr>
+  </table>
+  <p>Owner: Finance / Treasury Ops. Unlike the KPIs above, these are checked <em>outside</em> the "higher is better" pattern — both under- and over-100% completeness are breaks, since over-collection means a customer or partner is owed money back.</p>
 </div>
 
 <!-- ══ CH 8 ══ -->

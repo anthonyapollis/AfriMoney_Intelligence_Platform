@@ -1,0 +1,52 @@
+version: 2
+
+models:
+  - name: int_payment_reconciliation
+    description: >
+      Reconciles each transfer's committed collection (send amount + fee)
+      against what FACT_PAYMENT actually recorded as successfully charged.
+      One row per transfer_id.
+    columns:
+      - name: transfer_id
+        tests:
+          - not_null
+          - unique
+      - name: payment_recon_status
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['RECONCILED', 'MISSING_PAYMENT', 'DUPLICATE_SUCCESSFUL_PAYMENT',
+                         'AMOUNT_MISMATCH', 'COLLECTED_ON_INCOMPLETE_TRANSFER']
+      - name: successful_payment_count
+        tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: "<= 1"
+              config:
+                severity: warn
+
+  - name: int_payout_reconciliation
+    description: >
+      Reconciles each completed transfer's committed send amount against
+      what FACT_PAYOUT actually disbursed to the recipient-side partner
+      network. One row per completed transfer_id.
+    columns:
+      - name: transfer_id
+        tests:
+          - not_null
+          - unique
+      - name: payout_recon_status
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['RECONCILED', 'MISSING_SETTLEMENT', 'DUPLICATE_SETTLEMENT',
+                         'SETTLEMENT_VARIANCE']
+      - name: successful_payout_count
+        tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: "<= 1"
+              config:
+                severity: warn

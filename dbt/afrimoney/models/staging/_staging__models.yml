@@ -1,0 +1,68 @@
+version: 2
+
+models:
+  - name: stg_transfers
+    description: "Staged transfers from Bronze — one row per transfer order"
+    columns:
+      - name: transfer_id
+        description: "Unique transfer identifier"
+        tests:
+          - not_null
+          - unique
+      - name: business_key
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['MKR', 'MMY']
+      - name: transfer_status
+        tests:
+          - accepted_values:
+              arguments:
+                values: ['COMPLETED','FAILED','CANCELLED','REFUNDED','AWAITING_PAYMENT',
+                         'CREATED','QUOTED','PAID','COMPLIANCE_REVIEW','PROCESSING',
+                         'SENT_TO_PARTNER','AVAILABLE_FOR_COLLECTION']
+      - name: send_amount_zar
+        tests:
+          - not_null
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: "> 0"
+      - name: created_at
+        tests:
+          - not_null
+      - name: sender_customer_id
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: source('bronze', 'dim_customer')
+                field: customer_id
+
+  - name: stg_customers
+    description: "Staged customer dimension (current records only in marts)"
+    columns:
+      - name: customer_id
+        tests:
+          - not_null
+      - name: business_key
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['MKR', 'MMY']
+      - name: kyc_level
+        tests:
+          - accepted_values:
+              arguments:
+                values: ['LEVEL_0','LEVEL_1','LEVEL_2','LEVEL_3']
+      - name: risk_band
+        tests:
+          - accepted_values:
+              arguments:
+                values: ['LOW','MEDIUM','HIGH','VERY_HIGH']
+      - name: customer_status
+        tests:
+          - accepted_values:
+              arguments:
+                values: ['ACTIVE','SUSPENDED','CLOSED','DORMANT']

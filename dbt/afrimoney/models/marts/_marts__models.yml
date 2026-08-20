@@ -1,0 +1,66 @@
+version: 2
+
+models:
+  - name: mart_remittance
+    description: "Gold: monthly corridor remittance KPIs"
+    columns:
+      - name: business_key
+        tests:
+          - not_null
+      - name: success_rate_pct
+        tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: "between 0 and 100"
+      - name: total_net_revenue_zar
+        tests:
+          - not_null
+
+  - name: mart_customer_360
+    description: "Gold: one row per current customer with LTV and engagement"
+    columns:
+      - name: customer_id
+        tests:
+          - not_null
+          - unique
+      - name: ltv_score
+        tests:
+          - not_null
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: ">= 0"
+      - name: engagement_score
+        tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: "between 0 and 100"
+
+  - name: mart_reconciliation
+    description: >
+      Gold: monthly corridor-level control-total reconciliation between
+      committed transfer amounts, collected payments, and disbursed payouts.
+      The monthly finance/ops sign-off surface — total_reconciliation_breaks
+      should trend to zero.
+    columns:
+      - name: business_key
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['MKR', 'MMY']
+      - name: created_month
+        tests:
+          - not_null
+      - name: collection_completeness_pct
+        tests:
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: "between 0 and 100"
+              config:
+                severity: warn
+      - name: total_reconciliation_breaks
+        tests:
+          - not_null
+          - dbt_utils.expression_is_true:
+              arguments:
+                expression: ">= 0"
