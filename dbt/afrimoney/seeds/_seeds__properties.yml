@@ -1,0 +1,63 @@
+version: 2
+
+seeds:
+  - name: corridor_reference
+    description: >
+      Static reference data for the 17 active SA-outbound corridors. Held as a
+      seed rather than a source table because it is small, slow-changing and
+      genuinely belongs under version control — a corridor's regulatory regime
+      or tier changing is a reviewable code change, not a silent data update.
+    config:
+      schema: SILVER
+      tags: ['seed', 'reference']
+      column_types:
+        corridor_code: varchar(10)
+        launch_year: number(4,0)
+        is_sadc: boolean
+    columns:
+      - name: corridor_code
+        description: "Primary key. Format: '<send ISO2>-<receive ISO2>'."
+        data_tests:
+          - unique
+          - not_null
+      - name: regulatory_regime
+        description: >
+          CMA_EXEMPT corridors (Lesotho, Namibia, Eswatini, Botswana) sit inside
+          the Common Monetary Area and are exempt from SARB balance-of-payments
+          reporting. This materially changes both the compliance burden and the
+          FX margin available, so it drives logic downstream.
+        data_tests:
+          - accepted_values:
+              values: ['SARB_BOP', 'CMA_EXEMPT']
+      - name: corridor_tier
+        data_tests:
+          - accepted_values:
+              values: ['High-Volume Core', 'Premium Corridor', 'Growth Market', 'Emerging Route']
+      - name: launch_year
+        data_tests:
+          - not_negative
+          - dbt_utils.accepted_range:
+              min_value: 2010
+              max_value: 2030
+
+  - name: reconciliation_thresholds
+    description: >
+      Alert bands for the reconciliation and ops KPIs. Seeded so that changing a
+      tolerance is an auditable pull request — finance can see exactly when and
+      why a threshold moved, which matters when a band is widened right before a
+      metric would have breached it.
+    config:
+      schema: SILVER
+      tags: ['seed', 'reference', 'governance']
+    columns:
+      - name: metric_key
+        data_tests:
+          - unique
+          - not_null
+      - name: breach_severity
+        data_tests:
+          - accepted_values:
+              values: ['critical', 'high', 'medium', 'low']
+      - name: lower_bound_pct
+        data_tests:
+          - not_negative

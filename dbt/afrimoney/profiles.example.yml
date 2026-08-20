@@ -1,0 +1,86 @@
+# ══════════════════════════════════════════════════════════════════════════════
+# AfriMoney dbt connection profiles
+#
+# This is the EXAMPLE profile. It is committed deliberately because it contains
+# NO secrets — every credential resolves from an environment variable at runtime,
+# so the file documents the connection shape (useful to a reviewer) without ever
+# holding a password.
+#
+# The real profiles.yml stays gitignored, so an engineer who pastes a literal
+# password into their local copy cannot accidentally commit it.
+#
+# Local development:  cp profiles.example.yml profiles.yml
+#                     export the SNOWFLAKE_* vars, then `dbt build`
+# CI:                 the workflow injects them from GitHub Actions secrets
+# Production:         injected by the orchestrator's secret store
+# ══════════════════════════════════════════════════════════════════════════════
+
+afrimoney_snowflake:
+  target: dev
+
+  outputs:
+
+    # ────────────────────────────────────────────────────────────────────────
+    # dev — an engineer's laptop. Small warehouse, personal schema, clamped to
+    # a recent slice of history via the dev_lookback_months var.
+    # ────────────────────────────────────────────────────────────────────────
+    dev:
+      type: snowflake
+      account: "{{ env_var('SNOWFLAKE_ACCOUNT') }}"
+      user: "{{ env_var('SNOWFLAKE_USER') }}"
+      password: "{{ env_var('SNOWFLAKE_PASSWORD') }}"
+      role: "{{ env_var('SNOWFLAKE_ROLE', 'TRANSFORMER_DEV') }}"
+      database: "{{ env_var('SNOWFLAKE_DATABASE', 'AFRIMONEY_DB') }}"
+      warehouse: "{{ env_var('SNOWFLAKE_WAREHOUSE', 'AFRIMONEY_DEV_WH') }}"
+      # Personal schema keyed off the username so two engineers never collide.
+      schema: "DBT_{{ env_var('SNOWFLAKE_USER', 'LOCAL') | upper }}"
+      threads: 4
+      client_session_keep_alive: false
+      query_tag: dbt_dev
+
+    # ────────────────────────────────────────────────────────────────────────
+    # ci — throwaway schema per pull request, dropped at the end of the run.
+    # ────────────────────────────────────────────────────────────────────────
+    ci:
+      type: snowflake
+      account: "{{ env_var('SNOWFLAKE_ACCOUNT') }}"
+      user: "{{ env_var('SNOWFLAKE_USER') }}"
+      password: "{{ env_var('SNOWFLAKE_PASSWORD') }}"
+      role: "{{ env_var('SNOWFLAKE_ROLE', 'TRANSFORMER_CI') }}"
+      database: "{{ env_var('SNOWFLAKE_DATABASE', 'AFRIMONEY_DB') }}"
+      warehouse: "{{ env_var('SNOWFLAKE_WAREHOUSE', 'AFRIMONEY_CI_WH') }}"
+      schema: "{{ env_var('DBT_CI_SCHEMA', 'CI_DEFAULT') }}"
+      # Higher thread count than dev: CI warehouses are sized for burst and the
+      # run is latency-sensitive because a human is waiting on the PR check.
+      threads: 8
+      client_session_keep_alive: false
+      query_tag: dbt_ci
+      # Fail fast in CI. A build that is going to fail should fail in 90 seconds,
+      # not after grinding through the rest of the DAG.
+      retry_on_database_errors: false
+
+    # ────────────────────────────────────────────────────────────────────────
+    # prod — the only target where generate_schema_name emits bare schema names
+    # (SILVER / GOLD) and where grants and audit logging actually fire.
+    # ────────────────────────────────────────────────────────────────────────
+    prod:
+      type: snowflake
+      account: "{{ env_var('SNOWFLAKE_ACCOUNT') }}"
+      user: "{{ env_var('SNOWFLAKE_USER') }}"
+      # Key-pair auth rather than a password in production: the private key can
+      # be rotated without a redeploy and is never transmitted.
+      private_key_path: "{{ env_var('SNOWFLAKE_PRIVATE_KEY_PATH') }}"
+      private_key_passphrase: "{{ env_var('SNOWFLAKE_PRIVATE_KEY_PASSPHRASE') }}"
+      role: TRANSFORMER_PROD
+      database: AFRIMONEY_DB
+      warehouse: AFRIMONEY_TRANSFORM_WH
+      schema: GOLD
+      threads: 12
+      client_session_keep_alive: true
+      query_tag: dbt_prod
+      # Bounded retry on transient Snowflake errors so a momentary blip does not
+      # fail an overnight production build.
+      connect_retries: 3
+      connect_timeout: 30
+      retry_on_database_errors: true
+      retry_all: false

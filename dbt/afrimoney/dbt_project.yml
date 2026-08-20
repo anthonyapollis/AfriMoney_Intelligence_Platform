@@ -2,6 +2,10 @@ name: 'afrimoney'
 version: '1.0.0'
 config-version: 2
 
+# dbt 1.8+ required for unit tests; 1.9+ for dynamic_table materialization
+# and model versions with `include/exclude`.
+require-dbt-version: [">=1.9.0", "<2.0.0"]
+
 profile: 'afrimoney_snowflake'
 
 model-paths: ["models"]
@@ -9,30 +13,136 @@ snapshot-paths: ["snapshots"]
 test-paths: ["tests"]
 macro-paths: ["macros"]
 seed-paths: ["seeds"]
+analysis-paths: ["analyses"]
 
 target-path: "target"
 clean-targets: ["target", "dbt_packages"]
 
+# Prefer this project's macro implementations over a package's when names
+# collide — required for the set_query_tag override to actually take effect
+# instead of silently losing to dbt-snowflake's built-in.
+dispatch:
+  - macro_namespace: dbt
+    search_order: ['afrimoney', 'dbt']
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# RUN HOOKS
+# ═══════════════════════════════════════════════════════════════════════════════
+on-run-start:
+  - "{{ log('Starting ' ~ invocation_id ~ ' on target ' ~ target.name, info=true) }}"
+  - "create schema if not exists {{ target.database }}.META"
+
+on-run-end:
+  # Persist per-node run results so build duration and failures are queryable in
+  # Snowflake long after CI logs have expired.
+  - "{{ log_dbt_results(results) }}"
+  # Re-apply grants so a model added today is queryable by Power BI today.
+  - "{{ grant_select_on_schemas() }}"
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# MODELS
+# ═══════════════════════════════════════════════════════════════════════════════
 models:
   afrimoney:
+    # Applied to every model unless overridden further down.
+    +persist_docs:
+      # Push descriptions into Snowflake COMMENT metadata so anyone using the
+      # Snowflake UI or a third-party catalog sees the same documentation as the
+      # dbt docs site, without having to know dbt exists.
+      relation: true
+      columns: true
+
     staging:
       +schema: SILVER
       +materialized: view
       +tags: ["silver", "daily"]
+
     intermediate:
       +schema: SILVER
       +materialized: table
       +tags: ["silver", "daily"]
       +snowflake_warehouse: AFRIMONEY_TRANSFORM_WH
+
     marts:
       +schema: GOLD
       +materialized: table
       +tags: ["gold", "daily"]
       +snowflake_warehouse: AFRIMONEY_TRANSFORM_WH
+      # Declarative grants replace the old per-model post_hook GRANT statements.
+      # dbt diffs current against desired grants and issues only what changed,
+      # which is both idempotent and far cheaper than blanket re-granting.
+      +grants:
+        select: ['AFRIMONEY_ANALYST', 'AFRIMONEY_BI_SERVICE']
 
+    semantic:
+      # YAML-only directory — no models to materialize.
+      +enabled: true
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# SEEDS
+# ═══════════════════════════════════════════════════════════════════════════════
+seeds:
+  afrimoney:
+    +schema: SILVER
+    +tags: ["seed", "reference"]
+    +grants:
+      select: ['AFRIMONEY_ANALYST', 'AFRIMONEY_BI_SERVICE']
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# SNAPSHOTS
+# ═══════════════════════════════════════════════════════════════════════════════
+snapshots:
+  afrimoney:
+    +target_schema: SILVER_SNAPSHOTS
+    +snowflake_warehouse: AFRIMONEY_TRANSFORM_WH
+    +tags: ["snapshot", "scd2"]
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# TESTS
+# ═══════════════════════════════════════════════════════════════════════════════
+data_tests:
+  afrimoney:
+    +severity: error
+    # Persist failing rows to a table instead of only printing a count. When a
+    # reconciliation test fails at 2am, the on-call analyst needs the offending
+    # transfer_ids, not the number 47.
+    +store_failures: true
+    +schema: DBT_TEST_FAILURES
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# VARS
+# ═══════════════════════════════════════════════════════════════════════════════
 vars:
   reporting_currency: 'ZAR'
   start_date: '2021-01-01'
   end_date: '2026-06-28'
   fraud_threshold: 0.40
   churn_lookback_days: 90
+
+  # How far behind the watermark incremental models re-scan, to catch transfers
+  # whose payout settles days after creation. Widen for a backfill; do not
+  # narrow below 3 without checking the settlement latency distribution.
+  incremental_lookback_days: 7
+
+  # Non-prod builds are clamped to this many months of history so developers
+  # are not paying full-scan credits to test a one-line change.
+  dev_lookback_months: 3
+
+  # dbt_expectations needs an explicit date-spine anchor.
+  'dbt_date:time_zone': 'Africa/Johannesburg'
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# QUERY COMMENT
+# ═══════════════════════════════════════════════════════════════════════════════
+query-comment:
+  comment: "{{ query_comment(node) }}"
+  # Append rather than prepend so the comment survives Snowflake's query-text
+  # truncation in QUERY_HISTORY for very large statements.
+  append: true

@@ -1,0 +1,234 @@
+name: dbt CI
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Slim CI for the AfriMoney dbt project.
+#
+# The design goal is that a pull request touching one staging model should not
+# rebuild 5M rows through every downstream mart. Two things make that possible:
+#
+#   --defer + --state    Unchanged models resolve their ref() against the
+#                        production relations instead of being rebuilt in the
+#                        CI schema.
+#   state:modified+      Build only what changed, plus its children.
+#
+# Together these take a typical PR from a ~14-minute full build down to under
+# two minutes, which is the difference between CI people wait for and CI people
+# route around.
+# ══════════════════════════════════════════════════════════════════════════════
+
+on:
+  pull_request:
+    branches: [master]
+    paths:
+      - 'dbt/**'
+      - '.github/workflows/dbt_ci.yml'
+  workflow_dispatch:
+
+concurrency:
+  # A new push to the same PR cancels the in-flight run — otherwise two CI
+  # builds race to write the same schema and both produce noise.
+  group: dbt-ci-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+env:
+  DBT_PROFILES_DIR: ./dbt/afrimoney
+  # CI builds land in their own throwaway schema, namespaced by PR number so
+  # concurrent PRs cannot collide.
+  DBT_CI_SCHEMA: CI_PR_${{ github.event.pull_request.number || 'MANUAL' }}
+  SNOWFLAKE_ACCOUNT:   ${{ secrets.SNOWFLAKE_ACCOUNT }}
+  SNOWFLAKE_USER:      ${{ secrets.SNOWFLAKE_USER }}
+  SNOWFLAKE_PASSWORD:  ${{ secrets.SNOWFLAKE_PASSWORD }}
+  SNOWFLAKE_ROLE:      TRANSFORMER_CI
+  SNOWFLAKE_DATABASE:  AFRIMONEY_DB
+  SNOWFLAKE_WAREHOUSE: AFRIMONEY_CI_WH
+
+jobs:
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # 1. Static checks. No warehouse, no credentials, fails in seconds.
+  # ────────────────────────────────────────────────────────────────────────────
+  lint:
+    name: Lint & parse
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install dbt-snowflake~=1.9.0 sqlfluff~=3.2.0 sqlfluff-templater-dbt~=3.2.0
+
+      - name: Materialise profiles.yml from the committed example
+        working-directory: dbt/afrimoney
+        run: cp profiles.example.yml profiles.yml
+
+      - name: Install dbt packages
+        working-directory: dbt/afrimoney
+        run: dbt deps
+
+      - name: SQLFluff lint
+        working-directory: dbt/afrimoney
+        # Lint only what the PR touched. Retrofitting a linter across an existing
+        # project in one commit produces an unreviewable diff; gating new and
+        # changed files gets to the same place without the big-bang change.
+        run: |
+          CHANGED=$(git diff --name-only origin/${{ github.base_ref }}...HEAD \
+            | grep -E '^dbt/afrimoney/models/.*\.sql$' \
+            | sed 's|^dbt/afrimoney/||' || true)
+          if [ -z "$CHANGED" ]; then
+            echo "No changed SQL models to lint."
+            exit 0
+          fi
+          echo "Linting:"; echo "$CHANGED"
+          sqlfluff lint $CHANGED --dialect snowflake
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # 2. Unit tests. Mocked inputs only — still no warehouse data required.
+  # ────────────────────────────────────────────────────────────────────────────
+  unit-test:
+    name: Unit tests
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: pip install --upgrade pip dbt-snowflake~=1.9.0
+
+      - name: Materialise profiles.yml from the committed example
+        working-directory: dbt/afrimoney
+        run: cp profiles.example.yml profiles.yml
+
+      - name: dbt deps
+        working-directory: dbt/afrimoney
+        run: dbt deps
+
+      - name: Run unit tests
+        working-directory: dbt/afrimoney
+        env:
+          DBT_TARGET: ci
+          DBT_SCHEMA: ${{ env.DBT_CI_SCHEMA }}
+        run: dbt test --select "test_type:unit" --target ci
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # 3. Slim build of changed models + their children, then their tests.
+  # ────────────────────────────────────────────────────────────────────────────
+  slim-build:
+    name: Slim build & test
+    runs-on: ubuntu-latest
+    needs: unit-test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: pip install --upgrade pip dbt-snowflake~=1.9.0
+
+      - name: Materialise profiles.yml from the committed example
+        working-directory: dbt/afrimoney
+        run: cp profiles.example.yml profiles.yml
+
+      - name: dbt deps
+        working-directory: dbt/afrimoney
+        run: dbt deps
+
+      - name: Fetch production manifest
+        id: manifest
+        working-directory: dbt/afrimoney
+        # The production manifest is the baseline that makes state:modified
+        # meaningful. If it cannot be fetched we fall back to a full build rather
+        # than silently testing nothing — a CI run that passes because it did
+        # nothing is worse than a slow one.
+        run: |
+          mkdir -p prod-state
+          if aws s3 cp s3://afrimoney-dbt-artifacts/prod/manifest.json prod-state/manifest.json 2>/dev/null; then
+            echo "defer=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::No production manifest available — falling back to a full build."
+            echo "defer=false" >> "$GITHUB_OUTPUT"
+          fi
+        env:
+          AWS_ACCESS_KEY_ID:     ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION:    af-south-1
+
+      - name: Seed reference data
+        working-directory: dbt/afrimoney
+        env:
+          DBT_TARGET: ci
+          DBT_SCHEMA: ${{ env.DBT_CI_SCHEMA }}
+        run: dbt seed --target ci
+
+      - name: Slim build (changed + children)
+        if: steps.manifest.outputs.defer == 'true'
+        working-directory: dbt/afrimoney
+        env:
+          DBT_TARGET: ci
+          DBT_SCHEMA: ${{ env.DBT_CI_SCHEMA }}
+        run: |
+          dbt build \
+            --target ci \
+            --select "state:modified+" \
+            --defer \
+            --state prod-state \
+            --favor-state
+
+      - name: Full build (no baseline available)
+        if: steps.manifest.outputs.defer != 'true'
+        working-directory: dbt/afrimoney
+        env:
+          DBT_TARGET: ci
+          DBT_SCHEMA: ${{ env.DBT_CI_SCHEMA }}
+        run: dbt build --target ci
+
+      - name: Source freshness
+        working-directory: dbt/afrimoney
+        continue-on-error: true
+        env:
+          DBT_TARGET: ci
+          DBT_SCHEMA: ${{ env.DBT_CI_SCHEMA }}
+        run: dbt source freshness --target ci
+
+      - name: Flag changes to critical exposures
+        if: always()
+        working-directory: dbt/afrimoney
+        # Surfaces, as a PR annotation, when a change reaches something a human
+        # signs against — the reconciliation pack or a board dashboard.
+        run: |
+          AFFECTED=$(dbt ls \
+            --select "state:modified+,resource_type:exposure" \
+            --state prod-state \
+            --output name 2>/dev/null || true)
+          if [ -n "$AFFECTED" ]; then
+            echo "::warning title=Downstream exposures affected::$AFFECTED"
+          fi
+
+      - name: Upload run artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dbt-target-${{ github.run_id }}
+          path: dbt/afrimoney/target/
+          retention-days: 14
+
+      - name: Drop CI schema
+        if: always()
+        working-directory: dbt/afrimoney
+        # Always clean up, including on failure — orphaned CI schemas accumulate
+        # storage cost and make the database hard to navigate.
+        run: |
+          dbt run-operation drop_ci_schema \
+            --args "{schema_name: ${{ env.DBT_CI_SCHEMA }}}" \
+            --target ci || true

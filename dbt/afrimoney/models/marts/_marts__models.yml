@@ -1,40 +1,205 @@
 version: 2
 
 models:
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # mart_remittance — contracted, versioned
+  # ═══════════════════════════════════════════════════════════════════════════
   - name: mart_remittance
-    description: "Gold: monthly corridor remittance KPIs"
+    description: >
+      Gold: monthly corridor remittance KPIs. This is the single most
+      widely-consumed table in the platform — Power BI, the ebook, the interactive
+      map and the Excel dashboard all derive from it, which is why it carries an
+      enforced contract.
+    latest_version: 2
+
+    config:
+      contract:
+        enforced: true
+
+    # A contract makes the schema a published interface rather than an
+    # implementation detail. Snowflake refuses the build if a column is dropped,
+    # renamed, or has its type changed — so a rename that would silently return
+    # NULLs in a Power BI visual fails loudly at build time instead.
     columns:
+      - name: remittance_key
+        data_type: varchar
+        description: "Surrogate key over the full grain. Stable across rebuilds."
+        constraints:
+          - type: not_null
+        data_tests:
+          - unique
+
       - name: business_key
-        tests:
-          - not_null
-      - name: success_rate_pct
-        tests:
+        data_type: varchar
+        description: "MKR (Mukuru) or MMY (Mama Money)."
+        constraints:
+          - type: not_null
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['MKR', 'MMY']
+
+      - name: corridor_code
+        data_type: varchar
+        constraints:
+          - type: not_null
+        data_tests:
+          - relationships:
+              arguments:
+                to: ref('corridor_reference')
+                field: corridor_code
+
+      - name: created_month
+        data_type: date
+        constraints:
+          - type: not_null
+
+      - name: channel
+        data_type: varchar
+      - name: payment_method
+        data_type: varchar
+      - name: payout_method
+        data_type: varchar
+
+      - name: initiated_count
+        data_type: number(38,0)
+        constraints:
+          - type: not_null
+        data_tests:
+          - not_negative
+
+      - name: completed_count
+        data_type: number(38,0)
+        data_tests:
+          - not_negative
+          # Completed can never exceed initiated. This is the arithmetic
+          # invariant that a broken join fanout would violate first.
           - dbt_utils.expression_is_true:
               arguments:
-                expression: "between 0 and 100"
-      - name: total_net_revenue_zar
-        tests:
-          - not_null
+                expression: "<= initiated_count"
 
+      - name: failed_count
+        data_type: number(38,0)
+        data_tests:
+          - not_negative
+      - name: cancelled_count
+        data_type: number(38,0)
+      - name: refunded_count
+        data_type: number(38,0)
+      - name: fraud_flagged_count
+        data_type: number(38,0)
+      - name: unique_senders
+        data_type: number(38,0)
+      - name: unique_recipients
+        data_type: number(38,0)
+      - name: first_transfers
+        data_type: number(38,0)
+      - name: repeat_transfers
+        data_type: number(38,0)
+      - name: avg_payment_attempts
+        data_type: float
+      - name: avg_payout_attempts
+        data_type: float
+
+      - name: success_rate_pct
+        data_type: float
+        data_tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+                max_value: 100
+                inclusive: true
+
+      - name: failure_rate_pct
+        data_type: float
+      - name: cancellation_rate_pct
+        data_type: float
+
+      - name: fraud_rate_bps
+        data_type: float
+        data_tests:
+          - not_negative
+          # Platform average is 3.2 bps. Anything past 100 bps (1%) on a whole
+          # month is not a fraud wave, it is a broken flag.
+          - dbt_expectations.expect_column_max_to_be_between:
+              arguments:
+                min_value: 0
+                max_value: 100
+              config:
+                severity: warn
+
+      - name: total_volume_zar
+        data_type: number(18,2)
+        constraints:
+          - type: not_null
+        data_tests:
+          - not_negative
+
+      - name: total_fee_zar
+        data_type: number(18,2)
+      - name: total_fx_margin_zar
+        data_type: number(18,2)
+      - name: total_partner_cost_zar
+        data_type: number(18,2)
+      - name: total_gross_revenue_zar
+        data_type: number(18,2)
+
+      - name: total_net_revenue_zar
+        data_type: number(18,2)
+        constraints:
+          - type: not_null
+        # Deliberately NOT not_negative — a loss-making corridor-month is a real
+        # business outcome the mart must be able to represent.
+
+      - name: avg_send_amount_zar
+        data_type: number(18,2)
+      - name: avg_revenue_per_transfer_zar
+        data_type: number(18,2)
+      - name: avg_fx_spread_pct
+        data_type: float
+      - name: avg_completion_minutes
+        data_type: float
+      - name: median_completion_minutes
+        data_type: float
+      - name: is_digital_channel
+        data_type: boolean
+      - name: _dbt_updated_at
+        data_type: timestamp_ntz
+
+    versions:
+      # v2 is current: adds remittance_key and the corridor reference join.
+      - v: 2
+      # v1 is retained (deprecated) so Power BI datasets pinned to the old shape
+      # keep working through the migration window. Removing a version is a
+      # breaking change announced to consumers, not a silent drop.
+      - v: 1
+        deprecation_date: 2026-12-31
+        columns:
+          - include: all
+            exclude: [remittance_key]
+
+  # ═══════════════════════════════════════════════════════════════════════════
   - name: mart_customer_360
     description: "Gold: one row per current customer with LTV and engagement"
     columns:
       - name: customer_id
-        tests:
+        data_tests:
           - not_null
           - unique
       - name: ltv_score
-        tests:
+        data_tests:
           - not_null
-          - dbt_utils.expression_is_true:
-              arguments:
-                expression: ">= 0"
+          - not_negative
       - name: engagement_score
-        tests:
-          - dbt_utils.expression_is_true:
+        data_tests:
+          - dbt_utils.accepted_range:
               arguments:
-                expression: "between 0 and 100"
+                min_value: 0
+                max_value: 100
+                inclusive: true
 
+  # ═══════════════════════════════════════════════════════════════════════════
   - name: mart_reconciliation
     description: >
       Gold: monthly corridor-level control-total reconciliation between
@@ -43,24 +208,81 @@ models:
       should trend to zero.
     columns:
       - name: business_key
-        tests:
+        data_tests:
           - not_null
           - accepted_values:
               arguments:
                 values: ['MKR', 'MMY']
+
       - name: created_month
-        tests:
+        data_tests:
           - not_null
+
       - name: collection_completeness_pct
-        tests:
-          - dbt_utils.expression_is_true:
+        description: >
+          Collected / expected, as a percentage. Note this is a TWO-SIDED metric:
+          over 100% means duplicate charges went out and customers are owed money
+          back, which is as much a break as under-collecting. It is therefore
+          tested against a tolerance band, not a 0-100 range — the previous
+          "between 0 and 100" assertion was wrong and would have failed on the
+          real MKR figure of 102.0%.
+        data_tests:
+          - completeness_within_tolerance:
               arguments:
-                expression: "between 0 and 100"
+                lower_bound: 98
+                upper_bound: 102
               config:
                 severity: warn
-      - name: total_reconciliation_breaks
-        tests:
-          - not_null
-          - dbt_utils.expression_is_true:
+
+      - name: settlement_completeness_pct
+        data_tests:
+          - completeness_within_tolerance:
               arguments:
-                expression: ">= 0"
+                lower_bound: 98
+                upper_bound: 102
+              config:
+                severity: warn
+
+      - name: total_reconciliation_breaks
+        data_tests:
+          - not_null
+          - not_negative
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  - name: mart_corridor_live
+    description: >
+      Gold (Dynamic Table): rolling 24-hour corridor health for the ops
+      wallboard, maintained by Snowflake on a 5-minute target lag rather than by
+      a dbt run. See the model header for why this one is not a batch mart.
+    config:
+      # Freshness assertions on a dynamic table are the real test — if Snowflake
+      # has stopped refreshing it, every downstream number is quietly stale.
+      tags: ['realtime']
+    columns:
+      - name: corridor_code
+        data_tests:
+          - not_null
+          - unique
+          - relationships:
+              arguments:
+                to: ref('corridor_reference')
+                field: corridor_code
+
+      - name: corridor_health_status
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['HEALTHY', 'DEGRADED', 'SLOW', 'CRITICAL', 'STALLED', 'NO_TRAFFIC']
+
+      - name: transfers_24h
+        data_tests:
+          - not_negative
+
+      - name: success_rate_pct_24h
+        data_tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+                max_value: 100
+                inclusive: true

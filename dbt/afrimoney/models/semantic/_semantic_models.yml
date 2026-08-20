@@ -1,0 +1,196 @@
+version: 2
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# SEMANTIC LAYER  (MetricFlow)
+#
+# The problem this solves is specific and real in this project. "Net revenue" is
+# currently computed in at least four places — the Power BI DAX measure, the
+# Excel workbook formula, the ebook narrative, and the map's JSON export. They
+# agree today only because a QA pass forced them to (commit 2831bc9, "align all
+# KPIs across map, ebook and Excel"). Nothing stops them drifting apart again,
+# because the definition lives in four codebases.
+#
+# Defining the metric once here makes the marts the single source of truth and
+# every consumer a caller rather than a re-implementer.
+# ═══════════════════════════════════════════════════════════════════════════════
+
+semantic_models:
+
+  - name: remittance
+    description: "Monthly corridor remittance facts — the core measurable grain."
+    model: ref('mart_remittance')
+    defaults:
+      agg_time_dimension: created_month
+
+    entities:
+      - name: remittance
+        type: primary
+        expr: remittance_key
+      - name: corridor
+        type: foreign
+        expr: corridor_code
+
+    dimensions:
+      - name: created_month
+        type: time
+        type_params:
+          time_granularity: month
+      - name: business_key
+        type: categorical
+        description: "MKR (Mukuru) or MMY (Mama Money)."
+      - name: corridor_code
+        type: categorical
+      - name: channel
+        type: categorical
+      - name: payment_method
+        type: categorical
+      - name: payout_method
+        type: categorical
+      - name: is_digital_channel
+        type: categorical
+
+    measures:
+      - name: total_volume
+        description: "Gross ZAR sent on completed transfers."
+        agg: sum
+        expr: total_volume_zar
+        agg_time_dimension: created_month
+
+      - name: net_revenue
+        description: >
+          Revenue after partner cost and FX cost. The canonical definition — if a
+          consumer disagrees with a net revenue figure, this is the arbiter.
+        agg: sum
+        expr: total_net_revenue_zar
+
+      - name: gross_revenue
+        agg: sum
+        expr: total_gross_revenue_zar
+
+      - name: partner_cost
+        agg: sum
+        expr: total_partner_cost_zar
+
+      - name: transfers_initiated
+        agg: sum
+        expr: initiated_count
+
+      - name: transfers_completed
+        agg: sum
+        expr: completed_count
+
+      - name: transfers_fraud_flagged
+        agg: sum
+        expr: fraud_flagged_count
+
+      - name: distinct_senders
+        description: >
+          NOTE: this is a SUM of per-row distinct counts, so it over-counts any
+          customer who used more than one channel in a month. It is fine as a
+          volume proxy and wrong as a customer count — use mart_customer_360 for
+          the latter. Documented here because the trap is invisible at the call
+          site.
+        agg: sum
+        expr: unique_senders
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# METRICS
+# ═══════════════════════════════════════════════════════════════════════════════
+
+metrics:
+
+  - name: total_volume_zar
+    label: "Total Volume (ZAR)"
+    type: simple
+    type_params:
+      measure: total_volume
+
+  - name: net_revenue_zar
+    label: "Net Revenue (ZAR)"
+    description: "The headline P&L number. Single definition for all consumers."
+    type: simple
+    type_params:
+      measure: net_revenue
+
+  - name: success_rate
+    label: "Transfer Success Rate (%)"
+    description: >
+      Completed / initiated. Defined as a ratio metric rather than averaging the
+      per-row success_rate_pct column — averaging an average weights a corridor
+      with 12 transfers the same as one with 400,000, which is how this number
+      most commonly gets reported wrongly.
+    type: ratio
+    type_params:
+      numerator: transfers_completed
+      denominator: transfers_initiated
+
+  - name: net_margin_pct
+    label: "Net Margin (%)"
+    type: ratio
+    type_params:
+      numerator: net_revenue
+      denominator: total_volume
+
+  - name: partner_cost_ratio
+    label: "Partner Cost Ratio (%)"
+    type: ratio
+    type_params:
+      numerator: partner_cost
+      denominator: gross_revenue
+
+  - name: fraud_rate_bps
+    label: "Fraud Rate (bps)"
+    description: "Flagged / initiated, in basis points. Platform target is under 8 bps."
+    type: derived
+    type_params:
+      expr: fraud_ratio * 10000
+      metrics:
+        - name: fraud_ratio_internal
+          alias: fraud_ratio
+
+  - name: fraud_ratio_internal
+    label: "Fraud Ratio (internal)"
+    description: "Intermediate ratio backing fraud_rate_bps. Not for direct reporting."
+    config:
+      enabled: true
+    type: ratio
+    type_params:
+      numerator: transfers_fraud_flagged
+      denominator: transfers_initiated
+
+  - name: revenue_per_transfer
+    label: "Revenue per Completed Transfer (ZAR)"
+    type: ratio
+    type_params:
+      numerator: net_revenue
+      denominator: transfers_completed
+
+  - name: net_revenue_mom_growth
+    label: "Net Revenue MoM Growth (%)"
+    description: >
+      Month-over-month growth using MetricFlow's offset window, so the
+      period-comparison logic is defined once here instead of as a bespoke DAX
+      measure that only the Power BI report understands.
+    type: derived
+    type_params:
+      expr: (current_rev - prior_rev) * 100.0 / nullif(prior_rev, 0)
+      metrics:
+        - name: net_revenue_zar
+          alias: current_rev
+        - name: net_revenue_zar
+          alias: prior_rev
+          offset_window: 1 month
+
+  - name: digital_volume_share
+    label: "Digital Channel Volume Share (%)"
+    description: >
+      Share of volume moving through non-branch channels. The single clearest
+      indicator of the platform's strategic direction, so it gets a filtered
+      metric rather than being rebuilt with a slicer in each report.
+    type: ratio
+    type_params:
+      numerator:
+        name: total_volume
+        filter: "{{ Dimension('remittance__is_digital_channel') }} = true"
+      denominator: total_volume

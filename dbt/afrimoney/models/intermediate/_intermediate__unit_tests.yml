@@ -1,0 +1,120 @@
+version: 2
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# UNIT TESTS  (dbt >= 1.8)
+#
+# Data tests answer "is the data in the warehouse currently valid?".
+# Unit tests answer a different and complementary question: "is the SQL logic
+# correct?" — using fixed, hand-written inputs, with no warehouse data involved.
+#
+# That distinction matters most for the boundary conditions that real data
+# happens not to contain today. There is currently no transfer sitting exactly on
+# the R200 platinum boundary, so no data test can prove the tier logic handles it.
+# A unit test can, and will keep proving it after someone edits the CASE
+# expression two years from now.
+#
+# These run in CI on every pull request and need no Snowflake data, so they are
+# fast and free.
+# ═══════════════════════════════════════════════════════════════════════════════
+
+unit_tests:
+
+  # ───────────────────────────────────────────────────────────────────────────
+  - name: test_profitability_tier_boundaries
+    model: int_transfer_profitability
+    description: >
+      Pins every boundary of the profitability tier CASE expression, including
+      the exact-threshold values. CASE uses >= so R200.00 must be platinum, not
+      gold — an off-by-one here silently reclassifies the top revenue band and
+      quietly changes every downstream tier chart.
+
+    overrides:
+      macros:
+        # Force the model to compile as a first (non-incremental) build so the
+        # is_incremental() branch and its reference to {{ this }} — which does
+        # not exist during a unit test — are skipped.
+        is_incremental: false
+
+    given:
+      - input: ref('stg_transfers')
+        rows:
+          # Exactly on the platinum boundary
+          - {transfer_id: 'T1', business_key: 'MKR', corridor_code: 'ZA-ZW', is_completed: true, net_revenue_zar: 200.00, send_amount_zar: 5000.00, gross_revenue_zar: 250.00, fx_margin_zar: 100.00, transfer_fee_zar: 150.00, partner_cost_zar: 50.00, completion_minutes: 10, created_at: '2026-06-01 10:00:00'}
+          # One cent below platinum -> gold
+          - {transfer_id: 'T2', business_key: 'MKR', corridor_code: 'ZA-ZW', is_completed: true, net_revenue_zar: 199.99, send_amount_zar: 5000.00, gross_revenue_zar: 250.00, fx_margin_zar: 100.00, transfer_fee_zar: 150.00, partner_cost_zar: 50.00, completion_minutes: 20, created_at: '2026-06-01 10:00:00'}
+          # Exactly on the bronze/loss boundary — zero is bronze, not loss
+          - {transfer_id: 'T3', business_key: 'MMY', corridor_code: 'ZA-MW', is_completed: true, net_revenue_zar: 0.00, send_amount_zar: 300.00, gross_revenue_zar: 40.00, fx_margin_zar: 10.00, transfer_fee_zar: 30.00, partner_cost_zar: 40.00, completion_minutes: 1500, created_at: '2026-06-01 10:00:00'}
+          # Genuinely loss-making
+          - {transfer_id: 'T4', business_key: 'MMY', corridor_code: 'ZA-MW', is_completed: true, net_revenue_zar: -12.50, send_amount_zar: 250.00, gross_revenue_zar: 20.00, fx_margin_zar: 5.00, transfer_fee_zar: 15.00, partner_cost_zar: 32.50, completion_minutes: 61, created_at: '2026-06-01 10:00:00'}
+
+      - input: source('bronze', 'fact_fx_rate')
+        rows: []
+
+      - input: ref('corridor_reference')
+        rows:
+          - {corridor_code: 'ZA-ZW', corridor_tier: 'High-Volume Core', region: 'Southern Africa', regulatory_regime: 'SARB_BOP', settlement_partner_type: 'cash_agent', is_sadc: true}
+          - {corridor_code: 'ZA-MW', corridor_tier: 'High-Volume Core', region: 'Southern Africa', regulatory_regime: 'SARB_BOP', settlement_partner_type: 'mobile_wallet', is_sadc: true}
+
+    expect:
+      rows:
+        - {transfer_id: 'T1', profitability_tier: 'platinum', speed_tier: 'instant'}
+        - {transfer_id: 'T2', profitability_tier: 'gold',     speed_tier: 'fast'}
+        - {transfer_id: 'T3', profitability_tier: 'bronze',   speed_tier: 'multi_day'}
+        - {transfer_id: 'T4', profitability_tier: 'loss',     speed_tier: 'same_day'}
+
+  # ───────────────────────────────────────────────────────────────────────────
+  - name: test_incomplete_transfers_are_excluded
+    model: int_transfer_profitability
+    description: >
+      The model must only ever contain completed transfers. If this filter is
+      ever dropped, revenue would be recognised on transfers that failed — the
+      single most damaging silent error this model could produce, because the
+      resulting number still looks plausible.
+
+    overrides:
+      macros:
+        is_incremental: false
+
+    given:
+      - input: ref('stg_transfers')
+        rows:
+          - {transfer_id: 'OK',   business_key: 'MKR', corridor_code: 'ZA-ZW', is_completed: true,  net_revenue_zar: 100.00, send_amount_zar: 1000.00, gross_revenue_zar: 120.00, fx_margin_zar: 40.00, transfer_fee_zar: 80.00, partner_cost_zar: 20.00, completion_minutes: 5, created_at: '2026-06-01 10:00:00'}
+          - {transfer_id: 'FAIL', business_key: 'MKR', corridor_code: 'ZA-ZW', is_completed: false, net_revenue_zar: 999.00, send_amount_zar: 9000.00, gross_revenue_zar: 999.00, fx_margin_zar: 500.00, transfer_fee_zar: 499.00, partner_cost_zar: 0.00, completion_minutes: 5, created_at: '2026-06-01 10:00:00'}
+
+      - input: source('bronze', 'fact_fx_rate')
+        rows: []
+      - input: ref('corridor_reference')
+        rows:
+          - {corridor_code: 'ZA-ZW', corridor_tier: 'High-Volume Core', region: 'Southern Africa', regulatory_regime: 'SARB_BOP', settlement_partner_type: 'cash_agent', is_sadc: true}
+
+    expect:
+      rows:
+        - {transfer_id: 'OK'}
+
+  # ───────────────────────────────────────────────────────────────────────────
+  - name: test_safe_pct_returns_null_not_zero_on_zero_denominator
+    model: int_transfer_profitability
+    description: >
+      Guards the safe_pct macro at its most dangerous input. A zero-revenue
+      transfer must yield NULL margin, never 0% — because 0% reads on a dashboard
+      as "we made no margin", whereas the truth is "margin is undefined here".
+      Averaging a column of those fake zeros drags every corridor average down.
+
+    overrides:
+      macros:
+        is_incremental: false
+
+    given:
+      - input: ref('stg_transfers')
+        rows:
+          - {transfer_id: 'ZERO', business_key: 'MMY', corridor_code: 'ZA-LS', is_completed: true, net_revenue_zar: 0.00, send_amount_zar: 0.00, gross_revenue_zar: 0.00, fx_margin_zar: 0.00, transfer_fee_zar: 0.00, partner_cost_zar: 0.00, completion_minutes: 3, created_at: '2026-06-01 10:00:00'}
+
+      - input: source('bronze', 'fact_fx_rate')
+        rows: []
+      - input: ref('corridor_reference')
+        rows:
+          - {corridor_code: 'ZA-LS', corridor_tier: 'High-Volume Core', region: 'Southern Africa', regulatory_regime: 'CMA_EXEMPT', settlement_partner_type: 'bank_deposit', is_sadc: true}
+
+    expect:
+      rows:
+        - {transfer_id: 'ZERO', net_margin_pct: null, fx_revenue_share_pct: null}

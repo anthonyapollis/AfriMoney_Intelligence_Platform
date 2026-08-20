@@ -1,0 +1,7 @@
+metric_key,metric_label,lower_bound_pct,upper_bound_pct,breach_severity,owner_team,alert_after_consecutive_days
+collection_completeness_pct,Collection Completeness,98.0,102.0,critical,Finance Ops,1
+settlement_completeness_pct,Settlement Completeness,98.0,102.0,critical,Treasury Ops,1
+fx_spread_realised_pct,Realised FX Spread,1.5,4.5,high,Treasury Ops,3
+success_rate_pct,Transfer Success Rate,92.0,100.0,high,Platform Ops,2
+fraud_rate_bps,Fraud Rate (bps),0.0,8.0,critical,Risk & Compliance,1
+partner_cost_share_pct,Partner Cost Share,0.0,45.0,medium,Commercial,5
